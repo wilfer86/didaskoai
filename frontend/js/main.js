@@ -80,3 +80,21 @@ if (document.readyState === 'loading') {
 } else {
     iniciarApp();
 }
+// ===================================
+// Registrar Service Worker (PWA)
+// ===================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/pwa/service-worker.js')
+            .then(registration => {
+                if (CONFIG.DEBUG) {
+                    console.log('✅ Service Worker registrado:', registration.scope);
+                }
+            })
+            .catch(error => {
+                if (CONFIG.DEBUG) {
+                    console.error('❌ Error registrando Service Worker:', error);
+                }
+            });
+    });
+}
