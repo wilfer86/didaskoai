@@ -463,3 +463,62 @@
     opacity: 0.7;
     margin-top: 5px !important;
 }
+/* ===== VISION - ANALIZAR FOTO ===== */
+
+.vision-preview,
+.vision-analizando,
+.vision-resultado-completo {
+    text-align: center;
+    padding: 15px;
+    width: 100%;
+    color: #333;
+}
+
+.preview-img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--dorado);
+    margin-bottom: 15px;
+}
+
+.preview-nombre {
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+}
+
+.preview-hint {
+    color: var(--dorado-oscuro);
+    font-weight: bold;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.loader-vision {
+    margin-top: 20px;
+    color: var(--dorado-oscuro);
+}
+
+.analisis-buho {
+    background: linear-gradient(145deg, #fff, #f5f5f5);
+    padding: 20px;
+    margin-top: 15px;
+    border-radius: 15px;
+    border-left: 5px solid var(--dorado);
+    text-align: left;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.analisis-buho h3 {
+    color: var(--azul-medio);
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.analisis-texto {
+    color: #333;
+    line-height: 1.6;
+    font-size: 15px;
+}
