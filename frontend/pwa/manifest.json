@@ -1,0 +1,68 @@
+{
+    "name": "Didasko AI - Tutor Educativo",
+    "short_name": "Didasko AI",
+    "description": "Tutor educativo con IA para primaria, secundaria y universidad. Chat, análisis de fotos, creación de imágenes y videos.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0a1e5c",
+    "theme_color": "#f4c430",
+    "lang": "es",
+    "dir": "ltr",
+    "categories": ["education", "productivity", "utilities"],
+    "icons": [
+        {
+            "src": "/assets/logo/favicon/favicon-16x16.png",
+            "sizes": "16x16",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/logo/favicon/favicon-32x32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/logo/favicon/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/logo/favicon/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/logo/favicon/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Chat",
+            "short_name": "Chat",
+            "description": "Ir directo al chat",
+            "url": "/#chat",
+            "icons": [{ "src": "/assets/logo/favicon/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Crear Imagen",
+            "short_name": "Imagen",
+            "description": "Crear imagen con IA",
+            "url": "/#imagen",
+            "icons": [{ "src": "/assets/logo/favicon/android-chrome-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Analizar Foto",
+            "short_name": "Foto",
+            "description": "Analizar foto de tarea",
+            "url": "/#vision",
+            "icons": [{ "src": "/assets/logo/favicon/android-chrome-192x192.png", "sizes": "192x192" }]
+        }
+    ],
+    "prefer_related_applications": false
+}
