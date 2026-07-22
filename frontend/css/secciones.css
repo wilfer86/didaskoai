@@ -594,3 +594,89 @@
     margin-top: 15px;
     flex-wrap: wrap;
 }
+/* ===== ANUNCIO PUBLICITARIO ===== */
+
+.anuncio-publicidad {
+    background: linear-gradient(135deg, rgba(244, 196, 48, 0.95), rgba(201, 151, 0, 0.95));
+    color: var(--azul-oscuro);
+    padding: 15px 20px;
+    margin: 15px auto;
+    max-width: 90%;
+    border-radius: 15px;
+    border: 3px solid #fff3cd;
+    box-shadow: 
+        0 6px 20px rgba(244, 196, 48, 0.4),
+        inset 0 2px 5px rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.anuncio-publicidad:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 
+        0 10px 25px rgba(244, 196, 48, 0.6),
+        inset 0 2px 5px rgba(255, 255, 255, 0.5);
+}
+
+.anuncio-publicidad:active {
+    transform: scale(0.98);
+}
+
+.anuncio-contenido {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.anuncio-icono {
+    font-size: 40px;
+    flex-shrink: 0;
+    animation: pulseSoft 1.8s ease-in-out infinite;
+}
+
+.anuncio-texto {
+    flex: 1;
+    text-align: left;
+    min-width: 200px;
+}
+
+.anuncio-titulo {
+    font-weight: bold;
+    font-size: 16px;
+    margin: 0 0 4px 0;
+    color: var(--azul-oscuro);
+}
+
+.anuncio-numero {
+    font-size: 14px;
+    color: var(--azul-oscuro);
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    margin: 0;
+    font-weight: bold;
+}
+
+.anuncio-flecha {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--azul-oscuro);
+    background: rgba(255, 255, 255, 0.3);
+    padding: 6px 12px;
+    border-radius: 15px;
+    flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .anuncio-contenido {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .anuncio-texto {
+        text-align: center;
+    }
+}
