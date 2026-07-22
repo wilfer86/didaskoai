@@ -1,0 +1,343 @@
+/* ==========================================
+   responsive.css - Didasko AI
+   Control Web / App
+   ========================================== */
+
+
+/* =====================================================
+   💻 VERSIÓN WEB / PC
+   ===================================================== */
+
+@media (min-width: 769px) {
+
+    body {
+        background-color: var(--azul-oscuro);
+        background-image: url('../assets/fondos/fondo-circuito-web.png');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+
+    /* En PC NO se muestra bienvenida */
+    #bienvenida {
+        display: none !important;
+    }
+
+    /* En PC se muestran las pestañas folder */
+    .tabs-web {
+        display: flex !important;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 5px;
+        background: #242424;
+        padding-top: 12px;
+        height: 58px;
+        position: relative;
+        z-index: 20;
+    }
+
+    .tab-link {
+        background: linear-gradient(to bottom, #efe2c8, #d8c6a2);
+        color: #1b1b1b;
+        padding: 12px 24px;
+        border-radius: 16px 16px 0 0;
+        font-weight: bold;
+        font-size: 15px;
+        border: 1px solid #b9a57d;
+        box-shadow: inset 0 2px 4px rgba(255,255,255,0.6);
+    }
+
+    .tab-link.active {
+        background: #f5ead0;
+        transform: translateY(-4px);
+    }
+
+    /* Ocultar encabezados móviles en PC */
+    .movil-only,
+    .header-seccion {
+        display: none !important;
+    }
+
+    /* Pantallas internas en PC */
+    .pantalla {
+        min-height: calc(100vh - 58px);
+        padding-top: 20px;
+    }
+
+    /* Por defecto en PC se ve el chat principal */
+    #chat.activa,
+    #imagen.activa,
+    #vision.activa,
+    #video.activa,
+    #apoyar.activa {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Rectángulo web */
+    .contenido {
+        width: 72%;
+        max-width: 1000px;
+        height: 55vh;
+        margin-top: 0;
+    }
+
+    /* Barra input web */
+    .input-area {
+        width: 72%;
+        max-width: 1000px;
+        flex-direction: row;
+        margin-top: 25px;
+    }
+
+    .mascota {
+        width: 95px;
+    }
+}
+
+
+/* =====================================================
+   📱 VERSIÓN MÓVIL / APP
+   ===================================================== */
+
+@media (max-width: 768px) {
+
+    body {
+        background-color: var(--azul-oscuro);
+        background-image: url('../assets/fondos/fondo-circuito-app.png');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        overflow-x: hidden;
+    }
+
+    /* En móvil NO hay pestañas folder */
+    .tabs-web {
+        display: none !important;
+    }
+
+    /* En móvil solo se muestra la pantalla activa */
+    .pantalla {
+        display: none;
+        min-height: 100vh;
+        width: 100%;
+        padding-top: 0;
+    }
+
+    .pantalla.activa {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Encabezado móvil */
+    .header-seccion {
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: rgba(10, 30, 92, 0.95);
+        color: white;
+    }
+
+    .header-seccion button {
+        background: transparent;
+        color: white;
+        font-size: 24px;
+        width: auto;
+        height: auto;
+        border-radius: 0;
+    }
+
+    .header-seccion h2 {
+        font-size: 23px;
+        color: white;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    }
+
+    /* Bienvenida móvil */
+    #bienvenida {
+        justify-content: flex-start;
+        align-items: center;
+        padding: 20px;
+        min-height: 100vh;
+    }
+
+    .bienvenida-container {
+        width: 100%;
+        max-width: 460px;
+        padding: 35px 18px;
+        border-radius: 18px;
+    }
+
+    .logo-principal {
+        width: 135px;
+        margin-bottom: 30px;
+    }
+
+    .titulo-principal {
+        font-size: 44px;
+        letter-spacing: 2px;
+        margin-bottom: 15px;
+        color: aliceblue;
+    }
+
+    .subtitulo {
+        font-size: 17px;
+        margin-bottom: 38px;
+        color: #f2f2f2;
+    }
+
+    /* Menú móvil con iconos reales */
+    .menu-principal {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        justify-items: center;
+        width: 100%;
+    }
+
+    .menu-principal button {
+        width: 140px;
+        height: 140px;
+        border-radius: 18px;
+        padding: 12px;
+        background-color: #f3ab0f;
+    }
+
+    /* En móvil NO se ven emojis */
+    .menu-principal button .emoji-web {
+        display: none !important;
+    }
+
+    /* En móvil SÍ se ven tus iconos */
+    .menu-principal button .icono-app {
+        display: block !important;
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        margin-bottom: 8px;
+        filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));
+    }
+
+    .menu-principal button .texto-boton {
+        font-size: 16px;
+        line-height: 1.1;
+    }
+
+    .menu-principal button:last-child {
+        grid-column: 1 / 3;
+    }
+
+    /* Contenido móvil */
+    .contenido {
+        width: 92%;
+        height: 61vh;
+        margin: 10px auto 20px auto;
+        border-radius: 0 0 18px 18px;
+        padding: 18px;
+        background: #f2f2f2;
+    }
+
+    /* Input móvil */
+    .input-area {
+        width: 92%;
+        margin: 8px auto 18px auto;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .input-area input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        height: 48px;
+        border-radius: 28px;
+        font-size: 15px;
+        padding: 12px 16px;
+    }
+
+    .input-area button {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--dorado);
+        color: var(--azul-oscuro);
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .mascota {
+        width: 70px;
+        height: auto;
+        flex-shrink: 0;
+    }
+
+    /* Vision con file input */
+    .input-area.vertical {
+        flex-direction: column;
+    }
+
+    .input-area.vertical input,
+    .input-area.vertical button {
+        width: 100%;
+        max-width: 360px;
+        border-radius: 25px;
+    }
+
+    /* Pagos móvil */
+    .logo-pago,
+    .pago-card img {
+        width: 130px;
+        max-width: 80%;
+    }
+}
+
+
+/* =====================================================
+   📱 MÓVILES PEQUEÑOS
+   ===================================================== */
+
+@media (max-width: 430px) {
+
+    .bienvenida-container {
+        padding: 28px 14px;
+    }
+
+    .logo-principal {
+        width: 115px;
+        margin-bottom: 25px;
+    }
+
+    .titulo-principal {
+        font-size: 38px;
+    }
+
+    .subtitulo {
+        font-size: 16px;
+        margin-bottom: 30px;
+    }
+
+    .menu-principal {
+        gap: 18px;
+    }
+
+    .menu-principal button {
+        width: 130px;
+        height: 130px;
+    }
+
+    .menu-principal button .icono-app {
+        width: 65px;
+        height: 65px;
+    }
+
+    .contenido {
+        height: 58vh;
+    }
+
+    .mascota {
+        width: 62px;
+    }
+}

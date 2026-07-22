@@ -1,0 +1,384 @@
+/* ==========================================
+   secciones.css - Didasko AI
+   Estilos de las secciones internas (COMPLETO)
+   ========================================== */
+
+/* ===== APLICAR FONDO A TODAS LAS PANTALLAS ===== */
+
+#chat,
+#imagen,
+#vision,
+#video,
+#apoyar {
+    background-image: url('../assets/fondos/fondo-circuito-web.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* ===== CONTENIDO PRINCIPAL (Rectángulo blanco) ===== */
+
+.contenido {
+    background: #f5f5f5;
+    margin: 20px auto;
+    width: 72%;
+    max-width: 1000px;
+    height: 55vh;
+    border-radius: 20px;
+    padding: 25px;
+    overflow-y: auto;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    color: #333;
+    border: 3px solid var(--dorado);
+}
+
+/* ===== ÁREA DE IMAGEN (negro, como tu concepto) ===== */
+
+#imagen-resultado {
+    background: #0a0a0a;
+    border: 3px solid var(--dorado);
+    min-height: 55vh;
+}
+
+#imagen-resultado img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(244, 196, 48, 0.4);
+}
+
+#imagen-resultado:empty::before {
+    content: '🖼️';
+    font-size: 80px;
+    opacity: 0.3;
+    display: block;
+    text-align: center;
+}
+
+/* ===== ÁREA DE VIDEO (blanco con carrete) ===== */
+
+#video-resultado {
+    background: #fafafa;
+    border: 3px solid var(--dorado);
+    min-height: 55vh;
+}
+
+#video-resultado video {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+}
+
+#video-resultado:empty::before {
+    content: '🎬';
+    font-size: 80px;
+    opacity: 0.3;
+    display: block;
+    text-align: center;
+}
+
+/* ===== ÁREA DE ANALIZAR FOTO ===== */
+
+#vision-resultado {
+    background: #ffffff;
+    border: 3px solid var(--dorado);
+    min-height: 55vh;
+}
+
+#vision-resultado img {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#vision-resultado:empty::before {
+    content: '🔍';
+    font-size: 80px;
+    opacity: 0.3;
+    display: block;
+    text-align: center;
+}
+
+/* ===== HEADER MÓVIL ===== */
+
+.header-seccion {
+    display: none;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    background: linear-gradient(to right, var(--dorado), var(--dorado-oscuro));
+    color: var(--azul-oscuro);
+    border-radius: 0 0 15px 15px;
+    margin: 0 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.header-seccion button {
+    background: transparent;
+    color: var(--azul-oscuro);
+    font-size: 24px;
+    border: none;
+}
+
+.header-seccion h2 {
+    font-size: 22px;
+    color: var(--azul-oscuro);
+    font-weight: bold;
+}
+
+/* ===== INPUT AREA ===== */
+
+.input-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 20px auto;
+    width: 72%;
+    max-width: 1000px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px;
+    border-radius: 40px;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(244, 196, 48, 0.4);
+}
+
+.input-area input[type="text"] {
+    flex: 1;
+    padding: 14px 20px;
+    border-radius: 30px;
+    font-size: 16px;
+    border: none;
+    background: #ffffff;
+    color: #333;
+}
+
+.input-area button {
+    background: linear-gradient(145deg, var(--dorado), var(--dorado-oscuro));
+    color: var(--azul-oscuro);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    font-weight: bold;
+    border: 2px solid #fff3cd;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.input-area button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 15px rgba(244, 196, 48, 0.5);
+}
+
+/* ===== BÚHO MASCOTA ===== */
+
+.mascota {
+    width: 90px;
+    height: auto;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+/* ===== MENSAJES DEL CHAT ===== */
+
+.mensaje-chat {
+    padding: 12px 18px;
+    margin: 10px 0;
+    border-radius: 15px;
+    max-width: 80%;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease;
+}
+
+.mensaje-usuario {
+    background: linear-gradient(145deg, #4a90e2, #357abd);
+    color: white;
+    margin-left: auto;
+    text-align: right;
+}
+
+.mensaje-buho {
+    background: linear-gradient(145deg, #fff, #f0f0f0);
+    color: #333;
+    border-left: 4px solid var(--dorado);
+    margin-right: auto;
+}
+
+.mensaje-buho::before {
+    content: '🦉 Didasko AI';
+    display: block;
+    font-weight: bold;
+    color: var(--azul-medio);
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+/* ===== SECCIÓN APOYAR ===== */
+
+#apoyar .contenido {
+    background: rgba(10, 30, 92, 0.85);
+    border: 3px solid var(--dorado);
+    color: white;
+}
+
+.pago-card {
+    background: linear-gradient(145deg, rgba(244, 196, 48, 0.2), rgba(201, 151, 0, 0.15));
+    padding: 25px;
+    margin: 20px auto;
+    max-width: 400px;
+    border-radius: 20px;
+    border: 3px solid var(--dorado);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.pago-card:hover {
+    transform: translateY(-5px);
+}
+
+.pago-card img {
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
+    margin-bottom: 15px;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.pago-card p {
+    color: var(--azul-oscuro);
+    font-size: 16px;
+    margin: 5px 0;
+    font-weight: bold;
+}
+
+.pago-card .dato {
+    background: var(--azul-oscuro);
+    color: var(--dorado);
+    padding: 10px 15px;
+    border-radius: 25px;
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    border: 2px solid var(--dorado);
+    user-select: all;
+    cursor: pointer;
+}
+
+.pago-card .dato:hover {
+    background: var(--dorado);
+    color: var(--azul-oscuro);
+}
+
+/* ===== BOTÓN DE CÁMARA (Analizar Foto) ===== */
+
+.btn-camara {
+    background: linear-gradient(145deg, var(--dorado), var(--dorado-oscuro));
+    color: var(--azul-oscuro);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    border: 2px solid #fff3cd;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.btn-camara:hover {
+    transform: scale(1.1);
+}
+
+/* ===== SCROLL PERSONALIZADO ===== */
+
+.contenido::-webkit-scrollbar {
+    width: 10px;
+}
+
+.contenido::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+}
+
+.contenido::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--dorado), var(--dorado-oscuro));
+    border-radius: 5px;
+}
+/* ===== SELECTOR DE FORMATO ===== */
+
+.formato-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px auto;
+    padding: 12px 20px;
+    width: fit-content;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(244, 196, 48, 0.4);
+    flex-wrap: wrap;
+}
+
+.formato-label {
+    color: var(--dorado);
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.btn-formato {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--blanco);
+    border: 2px solid transparent;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-formato:hover {
+    background: rgba(244, 196, 48, 0.3);
+    border-color: var(--dorado);
+}
+
+.btn-formato.active {
+    background: linear-gradient(145deg, var(--dorado), var(--dorado-oscuro));
+    color: var(--azul-oscuro);
+    border-color: #fff3cd;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.formato-fijo {
+    background: linear-gradient(145deg, var(--dorado), var(--dorado-oscuro));
+    color: var(--azul-oscuro);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    border: 2px solid #fff3cd;
+}
+
+/* Responsive selector formato */
+@media (max-width: 768px) {
+    .formato-selector {
+        margin: 10px auto;
+        padding: 10px 15px;
+    }
+    
+    .btn-formato {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Didasko AI 🦉</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="assets/logo/favicon/favicon.ico">
+    <link rel="manifest" href="pwa/manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/bienvenida.css">
+    <link rel="stylesheet" href="css/secciones.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+
+    <!-- 📂 PESTAÑAS TIPO FOLDER (Solo visibles en PC) -->
+    <nav class="tabs-web">
+        <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
+        <button onclick="irA('imagen')" class="tab-link">🌌 Crear imagen</button>
+        <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
+        <button onclick="irA('video')" class="tab-link">🎬 Crear video</button>
+        <button onclick="irA('apoyar')" class="tab-link">💰 Apoyar el proyecto</button>
+    </nav>
+
+    <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
+    <section id="bienvenida" class="pantalla">
+        <div class="bienvenida-container">
+            <img src="assets/logo/buho-columna.png" class="logo-principal" alt="Didasko AI">
+            <h1 class="titulo-principal">Didasko AI</h1>
+            <p class="subtitulo">¡Bienvenido a tu tutor con IA! 🦉<br>Aprende, crea y descubre.</p>
+            <div class="menu-principal">
+                <button onclick="irA('chat')">
+                    <img src="assets/iconos-app/icono-chat.png" class="icono-app">
+                    <span class="texto-boton">Chat</span>
+                </button>
+                <button onclick="irA('imagen')">
+                    <img src="assets/iconos-app/icono-imagen.png" class="icono-app">
+                    <span class="texto-boton">Crear Imagen</span>
+                </button>
+                <button onclick="irA('vision')">
+                    <img src="assets/iconos-app/icono-vision.png" class="icono-app">
+                    <span class="texto-boton">Analizar Foto</span>
+                </button>
+                <button onclick="irA('video')">
+                    <img src="assets/iconos-app/icono-video.png" class="icono-app">
+                    <span class="texto-boton">Crear Video</span>
+                </button>
+                <button onclick="irA('apoyar')">
+                    <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
+                    <span class="texto-boton">Apoyar</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 💬 SECCIÓN CHAT -->
+    <section id="chat" class="pantalla activa">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🦉 Chat Didasko AI</h2>
+        </div>
+        <div id="chat-mensajes" class="contenido"></div>
+        <div class="input-area">
+            <img src="assets/logo/buho-mascota.png" class="mascota">
+            <input type="text" id="chat-input" placeholder="Escribe tu pregunta...">
+            <button onclick="enviarMensaje()">➤</button>
+        </div>
+    </section>
+
+   <!-- 🌌 SECCIÓN IMAGEN -->
+<section id="imagen" class="pantalla">
+    <div class="header-seccion movil-only">
+        <button onclick="volverInicio()">⬅️</button>
+        <h2>🌌 Crear Imagen</h2>
+    </div>
+    <div id="imagen-resultado" class="contenido centrado"></div>
+    
+    <!-- Selector de formato -->
+    <div class="formato-selector">
+        <span class="formato-label">Formato:</span>
+        <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">◼️ 1:1</button>
+        <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
+        <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱 9:16</button>
+    </div>
+    
+    <div class="input-area">
+        <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
+        <button onclick="crearImagen()">➤</button>
+    </div>
+</section>
+
+    <!-- 🔍 SECCIÓN VISIÓN -->
+    <section id="vision" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🔍 Analizar Foto</h2>
+        </div>
+        <div id="vision-resultado" class="contenido centrado"></div>
+        <div class="input-area">
+            <input type="file" id="vision-file" accept="image/*" style="display:none">
+            <button onclick="document.getElementById('vision-file').click()">📷</button>
+            <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
+            <button onclick="analizarImagen()">➤</button>
+        </div>
+    </section>
+
+    <!-- 🎬 SECCIÓN VIDEO -->
+    <section id="video" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🎬 Crear Video</h2>
+        </div>
+        <div id="video-resultado" class="contenido centrado"></div>
+        <div class="input-area">
+            <input type="text" id="video-input" placeholder="Describe tu video...">
+            <button onclick="crearVideo()">➤</button>
+        </div>
+    </section>
+
+    <!-- 💰 SECCIÓN APOYAR -->
+    <section id="apoyar" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>💰 Apoyar Proyecto</h2>
+        </div>
+        <div class="contenido centrado">
+            <div class="pago-card">
+                <img src="assets/pagos/paypal.png">
+                <p>cortezandres868@gmail.com</p>
+            </div>
+            <div class="pago-card">
+                <img src="assets/pagos/nequi.png">
+                <p>3171547065</p>
+            </div>
+        </div>
+    </section>
+
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/navegacion.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/imagen.js"></script>
+    <script src="js/vision.js"></script>
+    <script src="js/video.js"></script>
+    <script src="js/publicidad.js"></script>
+    <script src="js/apoyar.js"></script>
+</body>
+</html>

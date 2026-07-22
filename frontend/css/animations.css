@@ -1,0 +1,70 @@
+/* ==========================================
+   animations.css - Didasko AI
+   Animaciones y transiciones
+   ========================================== */
+
+/* Fade in general */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Spinner loader */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Flotar (logo búho) */
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Pulso suave (para botones/avisos) */
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* Brillo dorado */
+@keyframes glowGold {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(244,196,48,0.0);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(244,196,48,0.55);
+  }
+}
+
+/* Clase utilitaria: aplicar pulso */
+.pulse-soft {
+  animation: pulseSoft 1.6s ease-in-out infinite;
+}
+
+/* Clase utilitaria: brillo dorado */
+.glow-gold {
+  animation: glowGold 2.2s ease-in-out infinite;
+}
+
+/* Transición suave para pantallas */
+.pantalla.activa {
+  animation: fadeIn 0.35s ease;
+}
+
+/* Loader centrado */
+.loader-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+/* Animación sutil para el anuncio */
+@keyframes adWiggle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.ad-anim {
+  animation: adWiggle 1.8s ease-in-out infinite;
+}
