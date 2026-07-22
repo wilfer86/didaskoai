@@ -522,3 +522,75 @@
     line-height: 1.6;
     font-size: 15px;
 }
+/* ===== VIDEO GENERADO ===== */
+
+.video-generando {
+    text-align: center;
+    padding: 30px;
+    color: #333;
+}
+
+.video-mensaje {
+    font-size: 18px;
+    color: var(--azul-medio);
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.video-tiempo {
+    color: var(--dorado-oscuro);
+    font-size: 16px;
+    margin-top: 8px;
+    font-weight: bold;
+}
+
+.video-info {
+    font-size: 13px;
+    color: #666;
+    margin-top: 15px;
+    line-height: 1.5;
+}
+
+.barra-progreso {
+    width: 80%;
+    max-width: 400px;
+    height: 8px;
+    background: #ddd;
+    border-radius: 4px;
+    margin: 20px auto 0;
+    overflow: hidden;
+}
+
+.barra-progreso-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--dorado), var(--dorado-oscuro));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.video-generado {
+    text-align: center;
+    padding: 15px;
+    width: 100%;
+}
+
+.video-resultado-video {
+    max-width: 100%;
+    max-height: 500px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(244, 196, 48, 0.5);
+    border: 3px solid var(--dorado);
+}
+
+.video-info-final {
+    margin-top: 15px;
+    color: var(--dorado);
+}
+
+.video-acciones {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
