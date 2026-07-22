@@ -1,0 +1,47 @@
+# ==========================================
+# render.yaml - Didasko AI
+# Configuración automática de despliegue
+# ==========================================
+
+services:
+  # Servicio web (backend + frontend)
+  - type: web
+    name: didasko-ai
+    runtime: python
+    region: oregon
+    plan: free
+    
+    # Directorio raíz del backend
+    rootDir: backend
+    
+    # Instalar dependencias
+    buildCommand: pip install -r requirements.txt
+    
+    # Comando para iniciar el servidor
+    startCommand: gunicorn app:app --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
+    
+    # Variables de entorno (las claves REALES se configuran en Render dashboard)
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: AD_WHATSAPP
+        value: "573171547065"
+      - key: AD_TEXT
+        value: "📢 ¿Quieres publicidad aquí? Contáctanos: +57 317 154 7065"
+      # Las claves API se configuran manualmente en Render (más seguro)
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SILICONFLOW_API_KEY
+        sync: false
+    
+    # Health check para verificar que el servicio está vivo
+    healthCheckPath: /api/status
+    
+    # Auto-deploy cada vez que hagas push a GitHub
+    autoDeploy: true
