@@ -1,25 +1,23 @@
 # ===================================
 # requirements.txt - Didasko AI
 # ===================================
-# Librerías Python necesarias para el backend
-# ===================================
 
-# --- Framework web ---
+# Framework web
 Flask==3.0.0
 Flask-Cors==4.0.0
 
-# --- Servidor de producción (para Render) ---
+# Servidor de producción
 gunicorn==21.2.0
 
-# --- Variables de entorno ---
+# Variables de entorno
 python-dotenv==1.0.0
 
-# --- APIs de IA ---
-google-generativeai==0.3.2
+# APIs de IA
+google-generativeai==0.8.3
 requests==2.31.0
 
-# --- Manejo de imágenes ---
+# Manejo de imágenes
 Pillow==10.2.0
 
-# --- Utilidades ---
+# Utilidades
 python-multipart==0.0.6
