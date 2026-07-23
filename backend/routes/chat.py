@@ -107,7 +107,7 @@ def enviar_mensaje():
         
         # Configurar el modelo Gemini
         model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash-exp',
+            model_name='gemini-1.5-flash-latest',
             system_instruction=SYSTEM_INSTRUCTION
         )
         
