@@ -1,6 +1,6 @@
 // ==========================================
 // imagen.js - Didasko AI
-// Crear imágenes con SiliconFlow (Flux)
+// Crear imágenes con sistema dual (HF + Pollinations)
 // ==========================================
 
 // Formato seleccionado por defecto
@@ -10,16 +10,6 @@ let formatoImagenActual = '1:1';
 function actualizarFormatoImagen(formato) {
     formatoImagenActual = formato;
     if (CONFIG.DEBUG) console.log('🖼️ Formato imagen:', formato);
-}
-
-// Convertir formato a tamaño en píxeles
-function formatoATamano(formato) {
-    const tamanos = {
-        '1:1': '1024x1024',
-        '16:9': '1024x576',
-        '9:16': '576x1024'
-    };
-    return tamanos[formato] || '1024x1024';
 }
 
 // Función principal: crear imagen
@@ -36,7 +26,6 @@ async function crearImagen() {
     // Obtener formato del botón activo
     const botonActivo = document.querySelector('.btn-formato.active');
     const formato = botonActivo ? botonActivo.dataset.formato : '1:1';
-    const tamano = formatoATamano(formato);
 
     // Mostrar loader
     resultado.innerHTML = `
@@ -55,14 +44,14 @@ async function crearImagen() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: prompt,
-                size: tamano
+                formato: formato
             })
         });
 
         const data = await response.json();
 
         if (data.success && data.imagen_url) {
-            mostrarImagen(data.imagen_url, prompt, formato);
+            mostrarImagen(data.imagen_url, prompt, formato, data.proveedor);
 
             // Contar tarea para publicidad
             if (typeof contarTareaPublicidad === 'function') {
@@ -78,17 +67,21 @@ async function crearImagen() {
 }
 
 // Mostrar imagen generada
-function mostrarImagen(url, prompt, formato) {
+function mostrarImagen(url, prompt, formato, proveedor) {
     const resultado = document.getElementById('imagen-resultado');
+
+    // Clase CSS según formato
+    const claseFormato = `formato-${formato.replace(':', '-')}`;
+
     resultado.innerHTML = `
         <div class="imagen-generada">
-            <img src="${url}" alt="Imagen generada" class="imagen-resultado-img">
+            <img src="${url}" alt="Imagen generada" class="imagen-resultado-img ${claseFormato}">
             <div class="imagen-info">
                 <p class="prompt-usado">📝 "${prompt}"</p>
-                <p class="formato-usado">📐 Formato: ${formato}</p>
+                <p class="formato-usado">🖼️ Formato: ${formato} | 🤖 ${proveedor || 'IA'}</p>
                 <div class="imagen-acciones">
-                    <a href="${url}" download="didasko-imagen.png" class="btn-descargar">
-                        ⬇️ Descargar
+                    <a href="${url}" download="didasko-imagen.png" target="_blank" class="btn-descargar">
+                        📥 Descargar
                     </a>
                     <button onclick="crearOtraImagen()" class="btn-otra">
                         🔄 Crear otra
