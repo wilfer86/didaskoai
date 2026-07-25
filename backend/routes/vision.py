@@ -141,7 +141,7 @@ def analizar_imagen():
         
         # Configurar el modelo Gemini con capacidad de visión
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash-latest',
+            model_name='gemini-flash-latest',
             system_instruction=VISION_INSTRUCTION
         )
         
