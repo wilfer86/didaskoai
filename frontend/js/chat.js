@@ -102,15 +102,25 @@ function quitarLoader(id) {
     if (loader) loader.remove();
 }
 
-// Formatear texto (convierte saltos de línea y **bold**)
+// Formatear texto usando marked.js (renderiza Markdown completo)
 function formatearTexto(texto) {
-    return texto
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
+    if (typeof marked !== 'undefined') {
+        // Configurar marked para saltos de línea automáticos
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+        return marked.parse(texto);
+    } else {
+        // Fallback si marked no cargó
+        return texto
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
 }
 
 // Scroll automático al final
