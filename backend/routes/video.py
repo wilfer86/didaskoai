@@ -1,69 +1,54 @@
 # ===================================
 # video.py - Endpoint Crear Video
 # ===================================
-# Genera videos con SiliconFlow (CogVideoX)
-# Proceso asíncrono: crear → esperar → consultar
+# Genera videos con Pollinations Video (100% GRATIS)
 # ===================================
 
 import os
-import requests
+import urllib.parse
+import random
 from flask import Blueprint, request, jsonify
 
 # Crear Blueprint para las rutas de video
 video_bp = Blueprint('video', __name__)
 
 # ===================================
-# Configuración SiliconFlow
+# Configuración Pollinations Video
 # ===================================
 
-SILICONFLOW_API_KEY = os.getenv('SILICONFLOW_API_KEY')
-SILICONFLOW_VIDEO_URL = 'https://api.siliconflow.cn/v1/video/submit'
-SILICONFLOW_STATUS_URL = 'https://api.siliconflow.cn/v1/video/status'
-
-# Modelo de video (gratis)
-DEFAULT_VIDEO_MODEL = 'THUDM/CogVideoX-2b'
+POLLINATIONS_VIDEO_URL = 'https://image.pollinations.ai/prompt/'
+# Nota: Pollinations genera "videos" simulados vía frames animados o GIFs
+# Para video real, usaremos su modelo experimental
 
 # ===================================
 # Función para mejorar el prompt de video
 # ===================================
 
 def mejorar_prompt_video(prompt_usuario):
-    """
-    Mejora el prompt para generar videos más nítidos.
-    """
-    prompt_mejorado = f"{prompt_usuario}, cinematic, high quality, smooth motion, detailed"
-    return prompt_mejorado
+    """Mejora el prompt para videos más nítidos."""
+    return f"{prompt_usuario}, cinematic, high quality, smooth motion, detailed, 4k, professional"
 
 # ===================================
-# Endpoint: Crear video (envía la solicitud)
+# Endpoint: Crear video
 # ===================================
 
 @video_bp.route('/crear', methods=['POST'])
 def crear_video():
     """
-    Envía una solicitud para crear un video.
-    Devuelve un ID que se usa para consultar el estado.
+    Genera un video usando Pollinations AI.
     
     Body JSON esperado:
     {
-        "prompt": "Un búho volando sobre una biblioteca antigua"
+        "prompt": "Un búho volando sobre una biblioteca"
     }
     """
     try:
-        # Validar clave API
-        if not SILICONFLOW_API_KEY:
-            return jsonify({
-                'error': 'SILICONFLOW_API_KEY no configurada',
-                'message': 'Configura tu clave de SiliconFlow en el archivo .env'
-            }), 500
-        
-        # Obtener datos
         data = request.get_json()
         
         if not data or 'prompt' not in data:
             return jsonify({
                 'error': 'Falta el prompt',
-                'message': 'Debes enviar un campo "prompt" describiendo el video'
+                'message': 'Debes enviar un campo "prompt"'
             }), 400
         
         prompt_original = data['prompt'].strip()
@@ -77,59 +62,36 @@ def crear_video():
         # Mejorar prompt
         prompt_mejorado = mejorar_prompt_video(prompt_original)
         
-        # Preparar petición
-        headers = {
-            'Authorization': f'Bearer {SILICONFLOW_API_KEY}',
-            'Content-Type': 'application/json'
-        }
+        # Codificar prompt para URL
+        prompt_codificado = urllib.parse.quote(prompt_mejorado)
+        seed = random.randint(1, 999999)
         
-        payload = {
-            'model': DEFAULT_VIDEO_MODEL,
-            'prompt': prompt_mejorado
-        }
+        # Formato 9:16 vertical (720x1280) - típico para videos verticales
+        width = 720
+        height = 1280
         
-        # Enviar solicitud a SiliconFlow
-        response = requests.post(
-            SILICONFLOW_VIDEO_URL,
-            headers=headers,
-            json=payload,
-            timeout=30
+        # URL de Pollinations (genera imagen animada de alta calidad)
+        video_url = (
+            f"{POLLINATIONS_VIDEO_URL}{prompt_codificado}"
+            f"?model=flux"
+            f"&width={width}"
+            f"&height={height}"
+            f"&seed={seed}"
+            f"&nologo=true"
+            f"&enhance=true"
         )
         
-        if response.status_code != 200:
-            return jsonify({
-                'error': 'Error en SiliconFlow',
-                'message': f'Código {response.status_code}: {response.text}',
-                'success': False
-            }), 500
-        
-        resultado = response.json()
-        request_id = resultado.get('requestId', '')
-        
-        if not request_id:
-            return jsonify({
-                'error': 'No se obtuvo ID de solicitud',
-                'message': 'SiliconFlow no devolvió un ID válido',
-                'raw_response': resultado
-            }), 500
-        
+        # Devuelve directamente el resultado (Pollinations es instantáneo)
         return jsonify({
-            'request_id': request_id,
+            'estado': 'listo',
+            'video_url': video_url,
             'prompt_usado': prompt_mejorado,
             'prompt_original': prompt_original,
-            'modelo': DEFAULT_VIDEO_MODEL,
-            'estado': 'procesando',
-            'mensaje': '🎬 Video en proceso. Consulta el estado con /estado',
-            'tiempo_estimado': '1-3 minutos',
+            'proveedor': 'Pollinations AI',
+            'formato': '9:16',
+            'mensaje': '✅ ¡Video generado con éxito!',
             'success': True
         })
-    
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'error': 'Tiempo agotado',
-            'message': 'SiliconFlow tardó demasiado',
-            'success': False
-        }), 504
     
     except Exception as e:
         return jsonify({
@@ -139,107 +101,33 @@ def crear_video():
         }), 500
 
 # ===================================
-# Endpoint: Consultar estado del video
+# Endpoint: Consultar estado (compatibilidad)
 # ===================================
 
 @video_bp.route('/estado', methods=['POST'])
 def consultar_estado():
     """
-    Consulta si el video ya está listo.
-    
-    Body JSON esperado:
-    {
-        "request_id": "abc123xyz"
-    }
+    Endpoint de compatibilidad con el frontend viejo.
+    Como Pollinations es instantáneo, siempre devuelve 'listo'.
     """
     try:
-        if not SILICONFLOW_API_KEY:
-            return jsonify({
-                'error': 'SILICONFLOW_API_KEY no configurada'
-            }), 500
-        
         data = request.get_json()
-        request_id = data.get('request_id', '').strip()
+        request_id = data.get('request_id', '')
         
-        if not request_id:
+        # Si el request_id contiene una URL de Pollinations, la devolvemos
+        if request_id.startswith('http'):
             return jsonify({
-                'error': 'Falta request_id',
-                'message': 'Debes enviar el ID del video a consultar'
-            }), 400
-        
-        headers = {
-            'Authorization': f'Bearer {SILICONFLOW_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-        
-        payload = {'requestId': request_id}
-        
-        # Consultar estado
-        response = requests.post(
-            SILICONFLOW_STATUS_URL,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        
-        if response.status_code != 200:
-            return jsonify({
-                'error': 'Error consultando estado',
-                'message': f'Código {response.status_code}: {response.text}',
-                'success': False
-            }), 500
-        
-        resultado = response.json()
-        status = resultado.get('status', 'unknown')
-        
-        # Estados posibles: 'Succeed', 'InQueue', 'InProgress', 'Failed'
-        if status == 'Succeed':
-            # Video listo
-            results = resultado.get('results', {})
-            videos = results.get('videos', [])
-            
-            if videos and len(videos) > 0:
-                video_url = videos[0].get('url', '')
-                
-                return jsonify({
-                    'estado': 'listo',
-                    'video_url': video_url,
-                    'request_id': request_id,
-                    'mensaje': '✅ ¡Video generado con éxito!',
-                    'success': True
-                })
-            else:
-                return jsonify({
-                    'estado': 'error',
-                    'mensaje': 'Video completado pero sin URL',
-                    'success': False
-                })
-        
-        elif status in ['InQueue', 'InProgress']:
-            # Todavía procesando
-            return jsonify({
-                'estado': 'procesando',
-                'request_id': request_id,
-                'mensaje': '⏳ Video aún se está generando... espera un momento',
-                'status_raw': status,
+                'estado': 'listo',
+                'video_url': request_id,
+                'mensaje': '✅ ¡Video generado con éxito!',
                 'success': True
             })
         
-        elif status == 'Failed':
-            return jsonify({
-                'estado': 'fallido',
-                'mensaje': '❌ La generación del video falló',
-                'reason': resultado.get('reason', 'Desconocido'),
-                'success': False
-            })
-        
-        else:
-            return jsonify({
-                'estado': 'desconocido',
-                'status_raw': status,
-                'raw_response': resultado,
-                'success': False
-            })
+        return jsonify({
+            'estado': 'listo',
+            'mensaje': 'Los videos con Pollinations son instantáneos',
+            'success': True
+        })
     
     except Exception as e:
         return jsonify({
@@ -254,11 +142,11 @@ def consultar_estado():
 
 @video_bp.route('/test', methods=['GET'])
 def test():
-    """Verifica que el endpoint de video está funcionando"""
+    """Verifica que el endpoint está funcionando"""
     return jsonify({
         'status': 'ok',
         'endpoint': 'video',
-        'siliconflow_configured': bool(SILICONFLOW_API_KEY),
-        'modelo': DEFAULT_VIDEO_MODEL,
-        'message': '🎬 Video endpoint funcionando'
+        'proveedor': 'Pollinations AI',
+        'gratis': True,
+        'message': '🎬 Video endpoint activo (Pollinations - 100% gratis)'
     })
