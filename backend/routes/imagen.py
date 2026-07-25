@@ -21,7 +21,7 @@ imagen_bp = Blueprint('imagen', __name__)
 # ===================================
 
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
-HUGGINGFACE_MODEL = 'black-forest-labs/FLUX.1-schnell'
+HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-xl-base-1.0'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
