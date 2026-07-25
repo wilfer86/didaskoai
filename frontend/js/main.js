@@ -32,6 +32,7 @@ function iniciarApp() {
     if (CONFIG.DEBUG) {
         console.log('🚀 Iniciando Didasko AI...');
         console.log('📱 Modo:', esMovil() ? 'Móvil (App)' : 'PC (Web)');
+        console.log('📐 Ancho ventana:', window.innerWidth + 'px');
     }
 
     // Ocultar todo primero
@@ -44,7 +45,6 @@ function iniciarApp() {
     } else {
         // 💻 PC: Muestra chat directamente
         mostrarPantalla('chat');
-        // Activar el tab de chat
         activarTab('chat');
     }
 }
@@ -54,7 +54,6 @@ function activarTab(seccion) {
     const tabs = document.querySelectorAll('.tab-link');
     tabs.forEach(tab => tab.classList.remove('active'));
 
-    // Buscar el tab correcto
     tabs.forEach(tab => {
         if (tab.getAttribute('onclick') && tab.getAttribute('onclick').includes(`'${seccion}'`)) {
             tab.classList.add('active');
@@ -62,16 +61,14 @@ function activarTab(seccion) {
     });
 }
 
-// Detectar cambios de tamaño de pantalla (ej: rotar celular)
+// Re-inicializar si cambia el tamaño (rotación o resize)
+let resizeTimeout;
 window.addEventListener('resize', () => {
-    // Si cambia entre móvil/PC drásticamente, reiniciar vista
-    const pantallaActiva = document.querySelector('.pantalla.activa');
-    const idActivo = pantallaActiva ? pantallaActiva.id : null;
-
-    if (esMovil() && idActivo === 'chat' && !pantallaActiva.dataset.usuarioEntró) {
-        // Si cambia a móvil y estaba en chat sin haber entrado manualmente, volver a bienvenida
-        mostrarPantalla('bienvenida');
-    }
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        if (CONFIG.DEBUG) console.log('🔄 Ventana redimensionada:', window.innerWidth + 'px');
+        iniciarApp();
+    }, 300);
 });
 
 // Iniciar cuando el DOM esté listo
@@ -80,6 +77,7 @@ if (document.readyState === 'loading') {
 } else {
     iniciarApp();
 }
+
 // ===================================
 // Registrar Service Worker (PWA)
 // ===================================
