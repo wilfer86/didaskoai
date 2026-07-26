@@ -78,7 +78,7 @@ function mostrarImagen(url, prompt, formato, proveedor) {
             <img src="${url}" alt="Imagen generada" class="imagen-resultado-img ${claseFormato}">
             <div class="imagen-info">
                 <p class="prompt-usado">📝 "${prompt}"</p>
-                <p class="formato-usado">🖼️ Formato: ${formato} | 🤖 ${proveedor || 'IA'}</p>
+                <p class="formato-usado">🖼️ Formato: ${formato} | 🦉 Creado por Didasko AI</p>
                 <div class="imagen-acciones">
                     <a href="${url}" download="didasko-imagen.png" target="_blank" class="btn-descargar">
                         📥 Descargar
