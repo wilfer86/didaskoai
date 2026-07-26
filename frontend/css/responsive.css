@@ -59,22 +59,10 @@
     }
 
     /* Pantallas internas en PC */
-   /* En móvil solo se muestra la pantalla activa */
-.pantalla {
-    display: none;
-    min-height: 100vh;
-    height: 100vh;
-    width: 100%;
-    padding-top: 0;
-    overflow: hidden;
-}
-
-.pantalla.activa {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
+    .pantalla {
+        min-height: calc(100vh - 58px);
+        padding-top: 20px;
+    }
 
     /* Por defecto en PC se ve el chat principal */
     #chat.activa,
@@ -87,16 +75,12 @@
     }
 
     /* Rectángulo web */
-  /* Contenido móvil */
-.contenido {
-    width: 92%;
-    flex: 1;
-    margin: 10px auto;
-    border-radius: 12px;
-    padding: 18px;
-    background: #f2f2f2;
-    overflow-y: auto;
-}
+    .contenido {
+        width: 72%;
+        max-width: 1000px;
+        height: 55vh;
+        margin-top: 0;
+    }
 
     /* Barra input web */
     .input-area {
@@ -118,6 +102,11 @@
 
 @media (max-width: 768px) {
 
+    html, body {
+        height: 100%;
+        overflow: hidden;
+    }
+
     body {
         background-color: var(--azul-oscuro);
         background-image: url('../assets/fondos/fondo-circuito-app.png');
@@ -134,15 +123,22 @@
 
     /* En móvil solo se muestra la pantalla activa */
     .pantalla {
-        display: none;
+        display: none !important;
         min-height: 100vh;
+        height: 100vh;
         width: 100%;
         padding-top: 0;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        left: 0;
     }
 
     .pantalla.activa {
-        display: flex;
+        display: flex !important;
         flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
     }
 
     /* Encabezado móvil */
@@ -176,6 +172,7 @@
         align-items: center;
         padding: 20px;
         min-height: 100vh;
+        overflow-y: auto;
     }
 
     .bienvenida-container {
@@ -247,11 +244,13 @@
     /* Contenido móvil */
     .contenido {
         width: 92%;
-        height: 61vh;
-        margin: 10px auto 20px auto;
-        border-radius: 0 0 18px 18px;
+        flex: 1;
+        margin: 10px auto;
+        border-radius: 12px;
         padding: 18px;
         background: #f2f2f2;
+        overflow-y: auto;
+        min-height: 0;
     }
 
     /* Input móvil */
@@ -263,6 +262,7 @@
         align-items: center;
         justify-content: center;
         gap: 10px;
+        flex-shrink: 0;
     }
 
     .input-area input[type="text"] {
@@ -347,10 +347,6 @@
     .menu-principal button .icono-app {
         width: 65px;
         height: 65px;
-    }
-
-    .contenido {
-        height: 58vh;
     }
 
     .mascota {
