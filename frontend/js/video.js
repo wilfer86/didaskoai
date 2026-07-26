@@ -69,7 +69,7 @@ function mostrarVideo(url, prompt) {
             <img src="${url}" alt="Escena generada" class="video-resultado-video">
             <div class="video-info-final">
                 <p class="prompt-usado">📝 "${prompt}"</p>
-                <p class="formato-usado">📱 Formato: (9:16) | 🤖 Pollinations AI</p>
+                <p class="formato-usado">📱 Formato: (9:16) | 🦉 Didasko AI</p>
                 <div class="video-acciones">
                     <a href="${url}" download="didasko-escena.png" target="_blank" class="btn-descargar">
                         📥 Descargar
