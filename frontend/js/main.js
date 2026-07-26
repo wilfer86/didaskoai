@@ -62,12 +62,22 @@ function activarTab(seccion) {
 }
 
 // Re-inicializar si cambia el tamaño (rotación o resize)
+// Re-inicializar SOLO si cambia entre móvil/PC (no en cada resize del teclado)
+let anchoAnterior = window.innerWidth;
 let resizeTimeout;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
-        if (CONFIG.DEBUG) console.log('🔄 Ventana redimensionada:', window.innerWidth + 'px');
-        iniciarApp();
+        const anchoActual = window.innerWidth;
+        const erayaMovil = anchoAnterior <= 768;
+        const esAhoraMovil = anchoActual <= 768;
+
+        // Solo re-inicializar si cambió de móvil a PC o viceversa
+        if (erayaMovil !== esAhoraMovil) {
+            if (CONFIG.DEBUG) console.log('🔄 Cambio de modo:', anchoActual + 'px');
+            iniciarApp();
+        }
+        anchoAnterior = anchoActual;
     }, 300);
 });
 
