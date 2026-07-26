@@ -106,19 +106,25 @@
         </div>
     </section>
 
-    <!-- 🎬 SECCIÓN VIDEO -->
-    <section id="video" class="pantalla">
-        <div class="header-seccion movil-only">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🎬 Crear Video</h2>
+   <!-- 🎬 SECCIÓN VIDEO -->
+<section id="video" class="pantalla">
+    <div class="header-seccion movil-only">
+        <button onclick="volverInicio()">◄</button>
+        <h2>🎬 Crear Video</h2>
+    </div>
+    <div class="contenido centrado video-proximamente">
+        <video autoplay loop playsinline controls class="video-buho-intro">
+            <source src="assets/buho-didasko.mp4" type="video/mp4">
+            Tu navegador no soporta video.
+        </video>
+        <div class="mensaje-proximamente">
+            <h2>🎬 ¡Próximamente!</h2>
+            <p>Muy pronto crearás <strong>grandes historias en video</strong> con la magia de Didasko AI.</p>
+            <p class="sub-mensaje">✨ Prepárate para la magia visual ✨</p>
         </div>
-        <div id="video-resultado" class="contenido centrado"></div>
-        <div class="input-area">
-            <input type="text" id="video-input" placeholder="Describe tu video...">
-            <button onclick="crearVideo()">➤</button>
-        </div>
-    </section>
-
+    </div>
+</section>
+    
     <!-- 💰 SECCIÓN APOYAR -->
     <section id="apoyar" class="pantalla">
         <div class="header-seccion movil-only">
