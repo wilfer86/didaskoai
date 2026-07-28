@@ -1,20 +1,34 @@
 # ===================================
 # chat.py - Endpoint del Chat
 # ===================================
-# Maneja las conversaciones con Gemini
+# Maneja las conversaciones con NVIDIA (principal) y Gemini (respaldo)
 # Detecta nivel educativo automáticamente
 # Mantiene memoria de la conversación
 # ===================================
 
 import os
 from flask import Blueprint, request, jsonify
+from openai import OpenAI
 import google.generativeai as genai
 
 # Crear Blueprint para las rutas del chat
 chat_bp = Blueprint('chat', __name__)
 
 # ===================================
-# Configurar Gemini
+# Configurar NVIDIA (principal)
+# ===================================
+
+NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
+
+nvidia_client = None
+if NVIDIA_API_KEY:
+    nvidia_client = OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=NVIDIA_API_KEY
+    )
+
+# ===================================
+# Configurar Gemini (respaldo)
 # ===================================
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -61,8 +75,53 @@ Cuando alguien te pregunte quién eres, presenta como:
 # ===================================
 # Almacén de conversaciones (memoria)
 # ===================================
-# Cada usuario tiene su historial identificado por session_id
 conversations = {}
+
+# ===================================
+# Función principal: NVIDIA con respaldo Gemini
+# ===================================
+
+def generar_respuesta(mensaje, historial):
+    """
+    Intenta con NVIDIA primero.
+    Si falla, usa Gemini como respaldo.
+    """
+
+    # --- NVIDIA (principal) ---
+    if nvidia_client:
+        try:
+            # Construir mensajes con historial
+            messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
+            for item in historial:
+                messages.append(item)
+            messages.append({"role": "user", "content": mensaje})
+
+            response = nvidia_client.chat.completions.create(
+                model="nvidia/nemotron-ultra-253b-v1",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1024
+            )
+            return response.choices[0].message.content, "nvidia"
+
+        except Exception as e:
+            print(f"⚠️ NVIDIA falló: {e} — usando Gemini como respaldo")
+
+    # --- Gemini (respaldo) ---
+    if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel(
+                model_name='gemini-flash-latest',
+                system_instruction=SYSTEM_INSTRUCTION
+            )
+            chat = model.start_chat(history=[])
+            response = chat.send_message(mensaje)
+            return response.text, "gemini"
+
+        except Exception as e:
+            print(f"❌ Gemini también falló: {e}")
+
+    return "🦉 No hay servicio disponible en este momento. Intenta más tarde.", "none"
 
 # ===================================
 # Endpoint principal del chat
@@ -70,64 +129,54 @@ conversations = {}
 
 @chat_bp.route('/mensaje', methods=['POST'])
 def enviar_mensaje():
-    """
-    Recibe un mensaje del usuario y devuelve la respuesta del búho.
-    
-    Body JSON esperado:
-    {
-        "mensaje": "Explícame la fotosíntesis",
-        "session_id": "usuario_123"  (opcional, para memoria)
-    }
-    """
     try:
-        # Validar que hay clave API
-        if not GEMINI_API_KEY:
+        if not NVIDIA_API_KEY and not GEMINI_API_KEY:
             return jsonify({
-                'error': 'GEMINI_API_KEY no configurada',
-                'message': 'Configura tu clave de Gemini en el archivo .env'
+                'error': 'Sin API configurada',
+                'message': 'Configura NVIDIA_API_KEY o GEMINI_API_KEY'
             }), 500
-        
-        # Obtener datos del request
+
         data = request.get_json()
-        
+
         if not data or 'mensaje' not in data:
             return jsonify({
                 'error': 'Falta el mensaje',
                 'message': 'Debes enviar un campo "mensaje" en el body'
             }), 400
-        
+
         mensaje = data['mensaje'].strip()
         session_id = data.get('session_id', 'default')
-        
+
         if not mensaje:
             return jsonify({
                 'error': 'Mensaje vacío',
                 'message': 'El mensaje no puede estar vacío'
             }), 400
-        
-        # Configurar el modelo Gemini
-        model = genai.GenerativeModel(
-            model_name='gemini-flash-latest',
-            system_instruction=SYSTEM_INSTRUCTION
-        )
-        
-        # Recuperar o crear historial de conversación
+
+        # Recuperar historial de conversación
         if session_id not in conversations:
-            conversations[session_id] = model.start_chat(history=[])
-        
-        chat = conversations[session_id]
-        
-        # Enviar mensaje a Gemini
-        response = chat.send_message(mensaje)
-        respuesta_texto = response.text
-        
-        # Devolver respuesta
+            conversations[session_id] = []
+
+        historial = conversations[session_id]
+
+        # Generar respuesta
+        respuesta_texto, modelo_usado = generar_respuesta(mensaje, historial)
+
+        # Guardar en historial
+        conversations[session_id].append({"role": "user", "content": mensaje})
+        conversations[session_id].append({"role": "assistant", "content": respuesta_texto})
+
+        # Limitar historial a últimos 20 mensajes (10 intercambios)
+        if len(conversations[session_id]) > 20:
+            conversations[session_id] = conversations[session_id][-20:]
+
         return jsonify({
             'respuesta': respuesta_texto,
             'session_id': session_id,
+            'modelo': modelo_usado,
             'success': True
         })
-    
+
     except Exception as e:
         return jsonify({
             'error': 'Error al procesar mensaje',
@@ -141,26 +190,18 @@ def enviar_mensaje():
 
 @chat_bp.route('/reiniciar', methods=['POST'])
 def reiniciar_conversacion():
-    """
-    Borra el historial de una sesión (empieza una conversación nueva).
-    
-    Body JSON esperado:
-    {
-        "session_id": "usuario_123"
-    }
-    """
     try:
         data = request.get_json()
         session_id = data.get('session_id', 'default')
-        
+
         if session_id in conversations:
             del conversations[session_id]
-        
+
         return jsonify({
             'success': True,
             'message': '🦉 Conversación reiniciada'
         })
-    
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -173,11 +214,11 @@ def reiniciar_conversacion():
 
 @chat_bp.route('/test', methods=['GET'])
 def test():
-    """Verifica que el endpoint del chat está funcionando"""
     return jsonify({
         'status': 'ok',
         'endpoint': 'chat',
-        'gemini_configured': bool(GEMINI_API_KEY),
-        'active_sessions': len(conversations),
+        'nvidia_configurado': bool(NVIDIA_API_KEY),
+        'gemini_configurado': bool(GEMINI_API_KEY),
+        'sesiones_activas': len(conversations),
         'message': '🦉 Chat endpoint funcionando'
     })
