@@ -71,6 +71,9 @@ function agregarMensajeBuho(mensaje) {
     div.innerHTML = formatearTexto(mensaje);
     mensajesDiv.appendChild(div);
     scrollAlFinal();
+
+    // 🧮 Renderizar fórmulas matemáticas con MathJax
+    renderizarMatematicas(div);
 }
 
 // Agregar mensaje de error
@@ -102,17 +105,31 @@ function quitarLoader(id) {
     if (loader) loader.remove();
 }
 
+// 🧮 Normalizar LaTeX (arregla el formato raro que a veces devuelve NVIDIA)
+function normalizarLatex(texto) {
+    // Convierte ((...)) -> $...$
+    texto = texto.replace(/\(\((.+?)\)\)/g, '$$$1$$');
+    // Convierte (\frac...) o (\times...) sueltos -> $...$
+    texto = texto.replace(/\((\\[a-zA-Z]+.*?)\)/g, '$$$1$$');
+    // Convierte \( ... \) -> $ ... $
+    texto = texto.replace(/\\\((.+?)\\\)/g, '$$$1$$');
+    // Convierte \[ ... \] -> $$ ... $$
+    texto = texto.replace(/\\\[(.+?)\\\]/g, '$$$$$1$$$$');
+    return texto;
+}
+
 // Formatear texto usando marked.js (renderiza Markdown completo)
 function formatearTexto(texto) {
+    // Normalizar LaTeX primero
+    texto = normalizarLatex(texto);
+
     if (typeof marked !== 'undefined') {
-        // Configurar marked para saltos de línea automáticos
         marked.setOptions({
             breaks: true,
             gfm: true
         });
         return marked.parse(texto);
     } else {
-        // Fallback si marked no cargó
         return texto
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -120,6 +137,15 @@ function formatearTexto(texto) {
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.+?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>');
+    }
+}
+
+// 🧮 Renderizar fórmulas matemáticas con MathJax
+function renderizarMatematicas(elemento) {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([elemento]).catch(function(err) {
+            if (CONFIG.DEBUG) console.error('MathJax error:', err);
+        });
     }
 }
 
