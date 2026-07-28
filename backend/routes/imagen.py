@@ -1,9 +1,10 @@
 # ===================================
-# imagen.py - Endpoint Crear Imagen
+# imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
-# Sistema con respaldo automático:
-# 🥇 Primario: Hugging Face (FLUX)
-# 🥈 Respaldo: Pollinations AI (100% gratis)
+# 🥇 Primario: NVIDIA FLUX.1-schnell (crear)
+# 🎨 Editar: NVIDIA qwen-image-edit
+# 🥈 Respaldo: Hugging Face (crear)
+# 🥉 Último respaldo: Pollinations AI (crear)
 # ===================================
 
 import os
@@ -13,14 +14,18 @@ import random
 import base64
 from flask import Blueprint, request, jsonify
 
-# Crear Blueprint para las rutas de imagen
 imagen_bp = Blueprint('imagen', __name__)
 
 # ===================================
 # Configuración
 # ===================================
 
+NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
+
+NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell"
+NVIDIA_EDIT_URL = "https://ai.api.nvidia.com/v1/genai/qwen/qwen-image-edit"
+
 HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
 
@@ -32,11 +37,9 @@ POLLINATIONS_MODEL = 'flux'
 # ===================================
 
 def mejorar_prompt(prompt_usuario):
-    """Agrega palabras clave para mejorar la calidad."""
     return f"{prompt_usuario}, high quality, detailed, professional, 4k, masterpiece"
 
 def formato_a_dimensiones(formato):
-    """Convierte formato aspect ratio a width y height."""
     formatos = {
         '1:1': (1024, 1024),
         '16:9': (1280, 720),
@@ -45,23 +48,116 @@ def formato_a_dimensiones(formato):
     return formatos.get(formato, (1024, 1024))
 
 # ===================================
-# Proveedor 1: Hugging Face (Primario)
+# 🥇 NVIDIA FLUX.1-schnell (CREAR)
+# ===================================
+
+def generar_con_nvidia(prompt, width, height):
+    if not NVIDIA_API_KEY:
+        return None, "NVIDIA API Key no configurada"
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "prompt": prompt,
+            "width": width,
+            "height": height,
+            "seed": random.randint(1, 999999),
+            "steps": 4
+        }
+
+        response = requests.post(
+            NVIDIA_FLUX_URL,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            # NVIDIA devuelve imagen en base64 dentro de 'artifacts' o 'image'
+            if 'artifacts' in data and len(data['artifacts']) > 0:
+                imagen_b64 = data['artifacts'][0].get('base64', '')
+            elif 'image' in data:
+                imagen_b64 = data['image']
+            else:
+                return None, f"NVIDIA: formato inesperado - {str(data)[:200]}"
+
+            imagen_url = f"data:image/png;base64,{imagen_b64}"
+            return imagen_url, None
+        else:
+            return None, f"NVIDIA Código {response.status_code}: {response.text[:200]}"
+
+    except Exception as e:
+        return None, f"NVIDIA Error: {str(e)}"
+
+# ===================================
+# 🎨 NVIDIA qwen-image-edit (EDITAR)
+# ===================================
+
+def editar_con_nvidia(prompt, imagen_base64):
+    if not NVIDIA_API_KEY:
+        return None, "NVIDIA API Key no configurada"
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+
+        # Limpiar prefijo si existe
+        if ',' in imagen_base64:
+            imagen_base64 = imagen_base64.split(',')[1]
+
+        payload = {
+            "prompt": prompt,
+            "image": imagen_base64,
+            "seed": random.randint(1, 999999)
+        }
+
+        response = requests.post(
+            NVIDIA_EDIT_URL,
+            headers=headers,
+            json=payload,
+            timeout=90
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if 'artifacts' in data and len(data['artifacts']) > 0:
+                imagen_b64 = data['artifacts'][0].get('base64', '')
+            elif 'image' in data:
+                imagen_b64 = data['image']
+            else:
+                return None, f"NVIDIA Edit: formato inesperado - {str(data)[:200]}"
+
+            imagen_url = f"data:image/png;base64,{imagen_b64}"
+            return imagen_url, None
+        else:
+            return None, f"NVIDIA Edit Código {response.status_code}: {response.text[:200]}"
+
+    except Exception as e:
+        return None, f"NVIDIA Edit Error: {str(e)}"
+
+# ===================================
+# 🥈 Hugging Face (Respaldo Crear)
 # ===================================
 
 def generar_con_huggingface(prompt, width, height):
-    """
-    Genera imagen con Hugging Face.
-    Devuelve base64 de la imagen o None si falla.
-    """
     if not HUGGINGFACE_API_KEY:
         return None, "Hugging Face API Key no configurada"
-    
+
     try:
         headers = {
             'Authorization': f'Bearer {HUGGINGFACE_API_KEY}',
             'Content-Type': 'application/json'
         }
-        
+
         payload = {
             'inputs': prompt,
             'parameters': {
@@ -70,39 +166,34 @@ def generar_con_huggingface(prompt, width, height):
                 'num_inference_steps': 4
             }
         }
-        
+
         response = requests.post(
             HUGGINGFACE_URL,
             headers=headers,
             json=payload,
             timeout=60
         )
-        
+
         if response.status_code == 200:
-            # Hugging Face devuelve la imagen como bytes
             imagen_bytes = response.content
             imagen_base64 = base64.b64encode(imagen_bytes).decode('utf-8')
             imagen_url = f"data:image/png;base64,{imagen_base64}"
             return imagen_url, None
         else:
             return None, f"HF Código {response.status_code}: {response.text[:200]}"
-    
+
     except Exception as e:
         return None, f"HF Error: {str(e)}"
 
 # ===================================
-# Proveedor 2: Pollinations AI (Respaldo)
+# 🥉 Pollinations AI (Último respaldo)
 # ===================================
 
 def generar_con_pollinations(prompt, width, height):
-    """
-    Genera imagen con Pollinations AI (100% gratis, sin key).
-    Devuelve URL directa de la imagen.
-    """
     try:
         prompt_codificado = urllib.parse.quote(prompt)
         seed = random.randint(1, 999999)
-        
+
         imagen_url = (
             f"{POLLINATIONS_URL}{prompt_codificado}"
             f"?model={POLLINATIONS_MODEL}"
@@ -112,92 +203,138 @@ def generar_con_pollinations(prompt, width, height):
             f"&nologo=true"
             f"&enhance=true"
         )
-        
+
         return imagen_url, None
-    
+
     except Exception as e:
         return None, f"Pollinations Error: {str(e)}"
 
 # ===================================
-# Endpoint principal
+# Endpoint principal: CREAR
 # ===================================
 
 @imagen_bp.route('/crear', methods=['POST'])
 def crear_imagen():
-    """
-    Genera una imagen usando Hugging Face como primario y Pollinations como respaldo.
-    
-    Body JSON esperado:
-    {
-        "prompt": "Un búho sabio",
-        "formato": "1:1"  (opcional: 1:1, 16:9, 9:16)
-    }
-    """
     try:
         data = request.get_json()
-        
+
         if not data or 'prompt' not in data:
             return jsonify({
                 'error': 'Falta el prompt',
                 'message': 'Debes enviar un campo "prompt"'
             }), 400
-        
+
         prompt_original = data['prompt'].strip()
-        
+
         if not prompt_original:
             return jsonify({
                 'error': 'Prompt vacío',
                 'message': 'La descripción no puede estar vacía'
             }), 400
-        
-        # Formato
+
         formato = data.get('formato', '1:1')
         width, height = formato_a_dimensiones(formato)
-        
-        # Mejorar prompt
         prompt_mejorado = mejorar_prompt(prompt_original)
-        
-        # 🥇 INTENTO 1: Hugging Face
-        imagen_url, error_hf = generar_con_huggingface(prompt_mejorado, width, height)
-        
+
+        # 🥇 NVIDIA FLUX
+        imagen_url, error_nv = generar_con_nvidia(prompt_mejorado, width, height)
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
-                'proveedor': 'Hugging Face',
-                'modelo': HUGGINGFACE_MODEL,
+                'proveedor': 'NVIDIA FLUX.1-schnell',
                 'formato': formato,
                 'success': True
             })
-        
-        # 🥈 INTENTO 2 (RESPALDO): Pollinations AI
-        print(f"⚠️ Hugging Face falló: {error_hf}. Usando Pollinations como respaldo.")
-        
-        imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
-        
+
+        print(f"⚠️ NVIDIA falló: {error_nv}")
+
+        # 🥈 Hugging Face
+        imagen_url, error_hf = generar_con_huggingface(prompt_mejorado, width, height)
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
-                'proveedor': 'Pollinations AI (respaldo)',
-                'modelo': POLLINATIONS_MODEL,
+                'proveedor': 'Hugging Face (respaldo)',
                 'formato': formato,
                 'success': True,
+                'nota_nvidia': error_nv
+            })
+
+        print(f"⚠️ Hugging Face falló: {error_hf}")
+
+        # 🥉 Pollinations
+        imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
+        if imagen_url:
+            return jsonify({
+                'imagen_url': imagen_url,
+                'prompt_usado': prompt_mejorado,
+                'prompt_original': prompt_original,
+                'proveedor': 'Pollinations AI (respaldo final)',
+                'formato': formato,
+                'success': True,
+                'nota_nvidia': error_nv,
                 'nota_hf': error_hf
             })
-        
-        # Si ambos fallan
+
         return jsonify({
-            'error': 'Ambos proveedores fallaron',
-            'message': f'HF: {error_hf} | Pollinations: {error_pol}',
+            'error': 'Todos los proveedores fallaron',
+            'message': f'NVIDIA: {error_nv} | HF: {error_hf} | Pollinations: {error_pol}',
             'success': False
         }), 500
-    
+
     except Exception as e:
         return jsonify({
             'error': 'Error al crear imagen',
+            'message': str(e),
+            'success': False
+        }), 500
+
+# ===================================
+# Endpoint: EDITAR imagen
+# ===================================
+
+@imagen_bp.route('/editar', methods=['POST'])
+def editar_imagen():
+    try:
+        data = request.get_json()
+
+        if not data or 'prompt' not in data or 'imagen_base64' not in data:
+            return jsonify({
+                'error': 'Faltan datos',
+                'message': 'Debes enviar "prompt" e "imagen_base64"'
+            }), 400
+
+        prompt = data['prompt'].strip()
+        imagen_base64 = data['imagen_base64']
+
+        if not prompt:
+            return jsonify({
+                'error': 'Prompt vacío',
+                'message': 'Describe cómo editar la imagen'
+            }), 400
+
+        imagen_url, error = editar_con_nvidia(prompt, imagen_base64)
+
+        if imagen_url:
+            return jsonify({
+                'imagen_url': imagen_url,
+                'prompt_usado': prompt,
+                'proveedor': 'NVIDIA qwen-image-edit',
+                'success': True
+            })
+
+        return jsonify({
+            'error': 'Error al editar imagen',
+            'message': error,
+            'success': False
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            'error': 'Error al editar imagen',
             'message': str(e),
             'success': False
         }), 500
@@ -208,15 +345,13 @@ def crear_imagen():
 
 @imagen_bp.route('/test', methods=['GET'])
 def test():
-    """Verifica que el endpoint está funcionando"""
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'proveedor_primario': 'Hugging Face',
-        'huggingface_configured': bool(HUGGINGFACE_API_KEY),
-        'proveedor_respaldo': 'Pollinations AI',
+        'nvidia_configurado': bool(NVIDIA_API_KEY),
+        'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
         'pollinations_disponible': True,
-        'modelo_primario': HUGGINGFACE_MODEL,
-        'modelo_respaldo': POLLINATIONS_MODEL,
-        'message': '🎨 Sistema dual: HF + Pollinations activo'
+        'modelo_crear': 'NVIDIA FLUX.1-schnell',
+        'modelo_editar': 'NVIDIA qwen-image-edit',
+        'message': '🎨 Sistema imagen: NVIDIA + HF + Pollinations activo'
     })
