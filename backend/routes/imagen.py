@@ -2,8 +2,8 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Crear: NVIDIA FLUX.1-schnell
-# 🎨 Editar: Pollinations Kontext
-# 🥈 Respaldo crear: Hugging Face
+# 🎨 Editar: Hugging Face FLUX.1-Kontext-dev
+# 🥈 Respaldo crear: Hugging Face SD 3.5
 # 🥉 Último respaldo: Pollinations AI
 # ===================================
 
@@ -27,6 +27,9 @@ NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-s
 
 HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
+
+FLUX_EDIT_MODEL = "black-forest-labs/FLUX.1-Kontext-dev"
+FLUX_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{FLUX_EDIT_MODEL}"
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
@@ -94,47 +97,53 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# 🎨 Pollinations Kontext (EDITAR)
+# 🎨 Hugging Face FLUX.1-Kontext-dev (EDITAR)
 # ===================================
 
-def editar_con_pollinations(prompt, imagen_base64):
+def editar_con_flux_kontext(prompt, imagen_base64):
     """
-    Edita imagen usando Pollinations AI Kontext (image-to-image).
-    Gratis, sin API key.
+    Edita imagen usando FLUX.1-Kontext-dev en Hugging Face.
     """
+    if not HUGGINGFACE_API_KEY:
+        return None, "Hugging Face API Key no configurada"
+
     try:
         # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
-        prompt_codificado = urllib.parse.quote(prompt)
-        seed = random.randint(1, 999999)
+        # Decodificar base64 a bytes
+        imagen_bytes = base64.b64decode(imagen_base64)
 
-        # Pollinations Kontext = modelo de edición
-        imagen_url = (
-            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
-            f"?model=kontext"
-            f"&width=1024"
-            f"&height=1024"
-            f"&seed={seed}"
-            f"&nologo=true"
-            f"&image=data:image/png;base64,{imagen_base64}"
+        headers = {
+            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+            "Content-Type": "application/octet-stream",
+            "X-Wait-For-Model": "true"
+        }
+
+        # FLUX Kontext acepta imagen + prompt como parámetro
+        params = {"prompt": prompt}
+
+        response = requests.post(
+            FLUX_EDIT_URL,
+            headers=headers,
+            data=imagen_bytes,
+            params=params,
+            timeout=120
         )
-
-        response = requests.get(imagen_url, timeout=120)
 
         if response.status_code == 200:
             imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
-            return imagen_final, None
+            imagen_url = f"data:image/png;base64,{imagen_editada_b64}"
+            return imagen_url, None
         else:
-            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
+            return None, f"FLUX Kontext Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"Pollinations Edit Error: {str(e)}"
+        return None, f"FLUX Kontext Error: {str(e)}"
 
 # ===================================
-# 🥈 Hugging Face (Respaldo Crear)
+# 🥈 Hugging Face SD 3.5 (Respaldo Crear)
 # ===================================
 
 def generar_con_huggingface(prompt, width, height):
@@ -305,13 +314,13 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        imagen_url, error = editar_con_pollinations(prompt, imagen_base64)
+        imagen_url, error = editar_con_flux_kontext(prompt, imagen_base64)
 
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'Pollinations Kontext (edición)',
+                'proveedor': 'FLUX.1-Kontext-dev (Hugging Face)',
                 'success': True
             })
 
@@ -341,6 +350,6 @@ def test():
         'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
         'pollinations_disponible': True,
         'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'Pollinations Kontext',
+        'modelo_editar': 'FLUX.1-Kontext-dev',
         'message': '🎨 Sistema imagen: NVIDIA + HF + Pollinations activo'
     })
