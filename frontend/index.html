@@ -90,25 +90,38 @@
         </div>
     </section>
 
-   <!-- 🌌 SECCIÓN IMAGEN -->
+  <!-- 🎨 SECCIÓN IMAGEN -->
 <section id="imagen" class="pantalla">
     <div class="header-seccion movil-only">
         <button onclick="volverInicio()">⬅️</button>
-        <h2>🌌 Crear Imagen</h2>
+        <h2>🎨 Crear / Editar Imagen</h2>
     </div>
+
+    <!-- Selector de Modo: Crear o Editar -->
+    <div class="modo-selector">
+        <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
+        <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">🎨 Editar</button>
+    </div>
+
     <div id="imagen-resultado" class="contenido centrado"></div>
-    
-    <!-- Selector de formato -->
-    <div class="formato-selector">
+
+    <!-- Selector de formato (solo visible en modo Crear) -->
+    <div class="formato-selector" id="formato-selector">
         <span class="formato-label">Formato:</span>
-        <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">◼️ 1:1</button>
+        <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬜ 1:1</button>
         <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
         <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱 9:16</button>
     </div>
-    
+
+    <!-- Input oculto para subir imagen a editar -->
+    <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
+
     <div class="input-area">
+        <!-- Botón de subir imagen (solo visible en modo Editar) -->
+        <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen a editar">📤</button>
+
         <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
-        <button onclick="crearImagen()">➤</button>
+        <button onclick="procesarImagen()">➤</button>
     </div>
 </section>
 
