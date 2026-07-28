@@ -889,3 +889,39 @@
         font-size: 15px;
     }
 }
+
+/* 🎨 Selector de modo Crear/Editar */
+.modo-selector {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin: 10px auto;
+    max-width: 400px;
+}
+
+.btn-modo {
+    flex: 1;
+    padding: 10px 20px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-modo:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-modo.active {
+    background: linear-gradient(135deg, #f4b942, #d4941c);
+    color: #2c1810;
+    border-color: #f4b942;
+    box-shadow: 0 4px 12px rgba(244, 185, 66, 0.4);
+}
