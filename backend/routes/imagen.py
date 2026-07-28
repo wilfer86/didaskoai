@@ -1,10 +1,10 @@
 # ===================================
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
-# 🥇 Primario: NVIDIA FLUX.1-schnell (crear)
-# 🎨 Editar: Hugging Face Qwen-Image-Edit
-# 🥈 Respaldo: Hugging Face (crear)
-# 🥉 Último respaldo: Pollinations AI (crear)
+# 🥇 Crear: NVIDIA FLUX.1-schnell
+# 🎨 Editar: Pollinations Kontext
+# 🥈 Respaldo crear: Hugging Face
+# 🥉 Último respaldo: Pollinations AI
 # ===================================
 
 import os
@@ -27,9 +27,6 @@ NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-s
 
 HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
-
-QWEN_EDIT_MODEL = "Qwen/Qwen-Image-Edit"
-QWEN_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{QWEN_EDIT_MODEL}"
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
@@ -97,46 +94,44 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# 🎨 Hugging Face Qwen-Image-Edit (EDITAR)
+# 🎨 Pollinations Kontext (EDITAR)
 # ===================================
 
-def editar_con_huggingface(prompt, imagen_base64):
-    if not HUGGINGFACE_API_KEY:
-        return None, "Hugging Face API Key no configurada"
-
+def editar_con_pollinations(prompt, imagen_base64):
+    """
+    Edita imagen usando Pollinations AI Kontext (image-to-image).
+    Gratis, sin API key.
+    """
     try:
         # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
-        # Decodificar base64 a bytes
-        imagen_bytes = base64.b64decode(imagen_base64)
+        prompt_codificado = urllib.parse.quote(prompt)
+        seed = random.randint(1, 999999)
 
-        headers = {
-            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
-            "Content-Type": "application/octet-stream",
-            "X-Wait-For-Model": "true"
-        }
-
-        params = {"prompt": prompt}
-
-        response = requests.post(
-            QWEN_EDIT_URL,
-            headers=headers,
-            data=imagen_bytes,
-            params=params,
-            timeout=120
+        # Pollinations Kontext = modelo de edición
+        imagen_url = (
+            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
+            f"?model=kontext"
+            f"&width=1024"
+            f"&height=1024"
+            f"&seed={seed}"
+            f"&nologo=true"
+            f"&image=data:image/png;base64,{imagen_base64}"
         )
+
+        response = requests.get(imagen_url, timeout=120)
 
         if response.status_code == 200:
             imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-            imagen_url = f"data:image/png;base64,{imagen_editada_b64}"
-            return imagen_url, None
+            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
+            return imagen_final, None
         else:
-            return None, f"HF Edit Código {response.status_code}: {response.text[:200]}"
+            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"HF Edit Error: {str(e)}"
+        return None, f"Pollinations Edit Error: {str(e)}"
 
 # ===================================
 # 🥈 Hugging Face (Respaldo Crear)
@@ -180,7 +175,7 @@ def generar_con_huggingface(prompt, width, height):
         return None, f"HF Error: {str(e)}"
 
 # ===================================
-# 🥉 Pollinations AI (Último respaldo)
+# 🥉 Pollinations AI (Último respaldo crear)
 # ===================================
 
 def generar_con_pollinations(prompt, width, height):
@@ -310,13 +305,13 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        imagen_url, error = editar_con_huggingface(prompt, imagen_base64)
+        imagen_url, error = editar_con_pollinations(prompt, imagen_base64)
 
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'Hugging Face Qwen-Image-Edit',
+                'proveedor': 'Pollinations Kontext (edición)',
                 'success': True
             })
 
@@ -346,6 +341,6 @@ def test():
         'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
         'pollinations_disponible': True,
         'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'Hugging Face Qwen-Image-Edit',
+        'modelo_editar': 'Pollinations Kontext',
         'message': '🎨 Sistema imagen: NVIDIA + HF + Pollinations activo'
     })
