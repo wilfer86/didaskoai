@@ -96,54 +96,52 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# 🎨 NVIDIA qwen-image-edit (EDITAR)
+# # ===================================
+# 🎨 Hugging Face Qwen-Image-Edit (EDITAR)
 # ===================================
 
-def editar_con_nvidia(prompt, imagen_base64):
-    if not NVIDIA_API_KEY:
-        return None, "NVIDIA API Key no configurada"
+QWEN_EDIT_MODEL = "Qwen/Qwen-Image-Edit"
+QWEN_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{QWEN_EDIT_MODEL}"
+
+def editar_con_huggingface(prompt, imagen_base64):
+    if not HUGGINGFACE_API_KEY:
+        return None, "Hugging Face API Key no configurada"
 
     try:
-        headers = {
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        }
-
         # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
-        payload = {
-            "prompt": prompt,
-            "image": imagen_base64,
-            "seed": random.randint(1, 999999)
+        # Decodificar base64 a bytes
+        imagen_bytes = base64.b64decode(imagen_base64)
+
+        headers = {
+            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+            "Content-Type": "application/octet-stream",
+            "X-Wait-For-Model": "true"
         }
 
+        # HF acepta la imagen como bytes + prompt en el header
+        params = {"prompt": prompt}
+
         response = requests.post(
-            NVIDIA_EDIT_URL,
+            QWEN_EDIT_URL,
             headers=headers,
-            json=payload,
-            timeout=90
+            data=imagen_bytes,
+            params=params,
+            timeout=120
         )
 
         if response.status_code == 200:
-            data = response.json()
-            if 'artifacts' in data and len(data['artifacts']) > 0:
-                imagen_b64 = data['artifacts'][0].get('base64', '')
-            elif 'image' in data:
-                imagen_b64 = data['image']
-            else:
-                return None, f"NVIDIA Edit: formato inesperado - {str(data)[:200]}"
-
-            imagen_url = f"data:image/png;base64,{imagen_b64}"
+            # HF devuelve la imagen editada como bytes
+            imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
+            imagen_url = f"data:image/png;base64,{imagen_editada_b64}"
             return imagen_url, None
         else:
-            return None, f"NVIDIA Edit Código {response.status_code}: {response.text[:200]}"
+            return None, f"HF Edit Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"NVIDIA Edit Error: {str(e)}"
-
+        return None, f"HF Edit Error: {str(e)}"
 # ===================================
 # 🥈 Hugging Face (Respaldo Crear)
 # ===================================
