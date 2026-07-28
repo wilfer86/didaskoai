@@ -113,19 +113,28 @@
 </section>
 
     <!-- 🔍 SECCIÓN VISIÓN -->
-    <section id="vision" class="pantalla">
-        <div class="header-seccion movil-only">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🔍 Analizar Foto</h2>
-        </div>
-        <div id="vision-resultado" class="contenido centrado"></div>
-        <div class="input-area">
-            <input type="file" id="vision-file" accept="image/*" style="display:none">
-            <button onclick="document.getElementById('vision-file').click()">📷</button>
-            <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
-            <button onclick="analizarImagen()">➤</button>
-        </div>
-    </section>
+<section id="vision" class="pantalla">
+    <div class="header-seccion movil-only">
+        <button onclick="volverInicio()">⬅️</button>
+        <h2>🔍 Analizar Foto</h2>
+    </div>
+    <div id="vision-resultado" class="contenido centrado"></div>
+    <div class="input-area">
+        <!-- Input oculto: Galería -->
+        <input type="file" id="vision-file" accept="image/*" style="display:none">
+        <!-- Input oculto: Cámara directa -->
+        <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
+
+        <!-- Botón Galería 🖼️ -->
+        <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
+
+        <!-- Botón Cámara 📷 -->
+        <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📷</button>
+
+        <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
+        <button onclick="analizarImagen()">➤</button>
+    </div>
+</section>
 
    <!-- 🎬 SECCIÓN VIDEO -->
 <section id="video" class="pantalla">
