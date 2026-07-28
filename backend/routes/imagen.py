@@ -2,7 +2,7 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Crear: NVIDIA FLUX.1-schnell
-# 🎨 Editar: Hugging Face FLUX.1-Kontext-dev
+# 🎨 Editar: Imgbb (subir) + Pollinations Kontext (editar)
 # 🥈 Respaldo crear: Hugging Face SD 3.5
 # 🥉 Último respaldo: Pollinations AI
 # ===================================
@@ -22,17 +22,17 @@ imagen_bp = Blueprint('imagen', __name__)
 
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
+IMGBB_API_KEY = os.getenv('IMGBB_API_KEY')
 
 NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell"
 
 HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
 
-FLUX_EDIT_MODEL = "black-forest-labs/FLUX.1-Kontext-dev"
-FLUX_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{FLUX_EDIT_MODEL}"
-
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
+
+IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 # ===================================
 # Funciones auxiliares
@@ -48,6 +48,46 @@ def formato_a_dimensiones(formato):
         '9:16': (720, 1280)
     }
     return formatos.get(formato, (1024, 1024))
+
+# ===================================
+# 📤 Subir imagen a Imgbb (para obtener URL pública)
+# ===================================
+
+def subir_a_imgbb(imagen_base64):
+    """
+    Sube una imagen base64 a Imgbb y devuelve la URL pública.
+    """
+    if not IMGBB_API_KEY:
+        return None, "Imgbb API Key no configurada"
+
+    try:
+        # Limpiar prefijo si existe
+        if ',' in imagen_base64:
+            imagen_base64 = imagen_base64.split(',')[1]
+
+        payload = {
+            "key": IMGBB_API_KEY,
+            "image": imagen_base64
+        }
+
+        response = requests.post(
+            IMGBB_UPLOAD_URL,
+            data=payload,
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                url_publica = data['data']['url']
+                return url_publica, None
+            else:
+                return None, f"Imgbb error: {data}"
+        else:
+            return None, f"Imgbb Código {response.status_code}: {response.text[:200]}"
+
+    except Exception as e:
+        return None, f"Imgbb Error: {str(e)}"
 
 # ===================================
 # 🥇 NVIDIA FLUX.1-schnell (CREAR)
@@ -97,50 +137,40 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# 🎨 Hugging Face FLUX.1-Kontext-dev (EDITAR)
+# 🎨 Pollinations Kontext (EDITAR con URL pública)
 # ===================================
 
-def editar_con_flux_kontext(prompt, imagen_base64):
+def editar_con_pollinations(prompt, imagen_url_publica):
     """
-    Edita imagen usando FLUX.1-Kontext-dev en Hugging Face.
+    Edita imagen usando Pollinations Kontext.
+    Requiere URL pública de la imagen.
     """
-    if not HUGGINGFACE_API_KEY:
-        return None, "Hugging Face API Key no configurada"
-
     try:
-        # Limpiar prefijo si existe
-        if ',' in imagen_base64:
-            imagen_base64 = imagen_base64.split(',')[1]
+        prompt_codificado = urllib.parse.quote(prompt)
+        imagen_codificada = urllib.parse.quote(imagen_url_publica, safe='')
+        seed = random.randint(1, 999999)
 
-        # Decodificar base64 a bytes
-        imagen_bytes = base64.b64decode(imagen_base64)
-
-        headers = {
-            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
-            "Content-Type": "application/octet-stream",
-            "X-Wait-For-Model": "true"
-        }
-
-        # FLUX Kontext acepta imagen + prompt como parámetro
-        params = {"prompt": prompt}
-
-        response = requests.post(
-            FLUX_EDIT_URL,
-            headers=headers,
-            data=imagen_bytes,
-            params=params,
-            timeout=120
+        edit_url = (
+            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
+            f"?model=kontext"
+            f"&width=1024"
+            f"&height=1024"
+            f"&seed={seed}"
+            f"&nologo=true"
+            f"&image={imagen_codificada}"
         )
+
+        response = requests.get(edit_url, timeout=180)
 
         if response.status_code == 200:
             imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-            imagen_url = f"data:image/png;base64,{imagen_editada_b64}"
-            return imagen_url, None
+            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
+            return imagen_final, None
         else:
-            return None, f"FLUX Kontext Código {response.status_code}: {response.text[:200]}"
+            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"FLUX Kontext Error: {str(e)}"
+        return None, f"Pollinations Edit Error: {str(e)}"
 
 # ===================================
 # 🥈 Hugging Face SD 3.5 (Respaldo Crear)
@@ -314,13 +344,28 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        imagen_url, error = editar_con_flux_kontext(prompt, imagen_base64)
+        # PASO 1: Subir imagen a Imgbb para obtener URL pública
+        print("📤 Subiendo imagen a Imgbb...")
+        url_publica, error_upload = subir_a_imgbb(imagen_base64)
+
+        if not url_publica:
+            return jsonify({
+                'error': 'Error al subir imagen',
+                'message': error_upload,
+                'success': False
+            }), 500
+
+        print(f"✅ Imagen subida: {url_publica}")
+
+        # PASO 2: Editar con Pollinations Kontext usando la URL pública
+        print("🎨 Editando con Pollinations Kontext...")
+        imagen_url, error = editar_con_pollinations(prompt, url_publica)
 
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'FLUX.1-Kontext-dev (Hugging Face)',
+                'proveedor': 'Pollinations Kontext (Imgbb + Kontext)',
                 'success': True
             })
 
@@ -348,8 +393,9 @@ def test():
         'endpoint': 'imagen',
         'nvidia_configurado': bool(NVIDIA_API_KEY),
         'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
+        'imgbb_configurado': bool(IMGBB_API_KEY),
         'pollinations_disponible': True,
         'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'FLUX.1-Kontext-dev',
-        'message': '🎨 Sistema imagen: NVIDIA + HF + Pollinations activo'
+        'modelo_editar': 'Imgbb + Pollinations Kontext',
+        'message': '🎨 Sistema imagen completo activo'
     })
