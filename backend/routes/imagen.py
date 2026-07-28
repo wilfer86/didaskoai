@@ -2,7 +2,7 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Crear: NVIDIA FLUX.1-schnell
-# 🎨 Editar: Imgbb (subir) + Pollinations Kontext (editar)
+# 🎨 Editar: HF Space FLUX.1-Kontext-Dev (gradio_client + Imgbb)
 # 🥈 Respaldo crear: Hugging Face SD 3.5
 # 🥉 Último respaldo: Pollinations AI
 # ===================================
@@ -13,6 +13,7 @@ import urllib.parse
 import random
 import base64
 from flask import Blueprint, request, jsonify
+from gradio_client import Client, handle_file
 
 imagen_bp = Blueprint('imagen', __name__)
 
@@ -34,6 +35,9 @@ POLLINATIONS_MODEL = 'flux'
 
 IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
+# Space de Hugging Face para editar imágenes
+FLUX_KONTEXT_SPACE = "black-forest-labs/FLUX.1-Kontext-Dev"
+
 # ===================================
 # Funciones auxiliares
 # ===================================
@@ -50,18 +54,14 @@ def formato_a_dimensiones(formato):
     return formatos.get(formato, (1024, 1024))
 
 # ===================================
-# 📤 Subir imagen a Imgbb (para obtener URL pública)
+# 📤 Subir imagen a Imgbb (URL pública)
 # ===================================
 
 def subir_a_imgbb(imagen_base64):
-    """
-    Sube una imagen base64 a Imgbb y devuelve la URL pública.
-    """
     if not IMGBB_API_KEY:
         return None, "Imgbb API Key no configurada"
 
     try:
-        # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
@@ -79,8 +79,7 @@ def subir_a_imgbb(imagen_base64):
         if response.status_code == 200:
             data = response.json()
             if data.get('success'):
-                url_publica = data['data']['url']
-                return url_publica, None
+                return data['data']['url'], None
             else:
                 return None, f"Imgbb error: {data}"
         else:
@@ -137,40 +136,64 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# 🎨 Pollinations Kontext (EDITAR con URL pública)
+# 🎨 HF Space FLUX.1-Kontext-Dev (EDITAR)
 # ===================================
 
-def editar_con_pollinations(prompt, imagen_url_publica):
+def editar_con_flux_kontext(prompt, imagen_url_publica):
     """
-    Edita imagen usando Pollinations Kontext.
+    Edita imagen usando el Space oficial FLUX.1-Kontext-Dev.
     Requiere URL pública de la imagen.
     """
     try:
-        prompt_codificado = urllib.parse.quote(prompt)
-        imagen_codificada = urllib.parse.quote(imagen_url_publica, safe='')
-        seed = random.randint(1, 999999)
+        # Conectar al Space (con token HF si existe, mejora estabilidad)
+        if HUGGINGFACE_API_KEY:
+            client = Client(FLUX_KONTEXT_SPACE, hf_token=HUGGINGFACE_API_KEY)
+        else:
+            client = Client(FLUX_KONTEXT_SPACE)
 
-        edit_url = (
-            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
-            f"?model=kontext"
-            f"&width=1024"
-            f"&height=1024"
-            f"&seed={seed}"
-            f"&nologo=true"
-            f"&image={imagen_codificada}"
+        # Llamar al endpoint /infer
+        result = client.predict(
+            input_image=handle_file(imagen_url_publica),
+            prompt=prompt,
+            seed=0,
+            randomize_seed=True,
+            guidance_scale=2.5,
+            steps=28,
+            api_name="/infer"
         )
 
-        response = requests.get(edit_url, timeout=180)
+        # result es una tupla: (dict_imagen, seed)
+        # El dict de imagen tiene 'path' (local en el space) o 'url'
+        if isinstance(result, tuple) and len(result) > 0:
+            imagen_data = result[0]
 
-        if response.status_code == 200:
-            imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
-            return imagen_final, None
+            # Puede venir como path local o URL
+            if isinstance(imagen_data, dict):
+                imagen_path = imagen_data.get('url') or imagen_data.get('path')
+            elif isinstance(imagen_data, str):
+                imagen_path = imagen_data
+            else:
+                return None, f"Formato inesperado: {type(imagen_data)}"
+
+            # Descargar la imagen resultado
+            if imagen_path.startswith('http'):
+                # Es URL directa
+                img_response = requests.get(imagen_path, timeout=60)
+                if img_response.status_code == 200:
+                    imagen_b64 = base64.b64encode(img_response.content).decode('utf-8')
+                    return f"data:image/png;base64,{imagen_b64}", None
+                else:
+                    return None, f"Error descargando resultado: {img_response.status_code}"
+            else:
+                # Es path local (gradio_client ya lo descargó)
+                with open(imagen_path, 'rb') as f:
+                    imagen_b64 = base64.b64encode(f.read()).decode('utf-8')
+                return f"data:image/png;base64,{imagen_b64}", None
         else:
-            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
+            return None, f"Resultado inesperado: {result}"
 
     except Exception as e:
-        return None, f"Pollinations Edit Error: {str(e)}"
+        return None, f"FLUX Kontext Space Error: {str(e)}"
 
 # ===================================
 # 🥈 Hugging Face SD 3.5 (Respaldo Crear)
@@ -344,7 +367,7 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        # PASO 1: Subir imagen a Imgbb para obtener URL pública
+        # PASO 1: Subir imagen a Imgbb
         print("📤 Subiendo imagen a Imgbb...")
         url_publica, error_upload = subir_a_imgbb(imagen_base64)
 
@@ -357,15 +380,15 @@ def editar_imagen():
 
         print(f"✅ Imagen subida: {url_publica}")
 
-        # PASO 2: Editar con Pollinations Kontext usando la URL pública
-        print("🎨 Editando con Pollinations Kontext...")
-        imagen_url, error = editar_con_pollinations(prompt, url_publica)
+        # PASO 2: Editar con FLUX Kontext Space
+        print("🎨 Editando con FLUX.1-Kontext-Dev...")
+        imagen_url, error = editar_con_flux_kontext(prompt, url_publica)
 
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'Pollinations Kontext (Imgbb + Kontext)',
+                'proveedor': 'FLUX.1-Kontext-Dev (HF Space)',
                 'success': True
             })
 
@@ -396,6 +419,6 @@ def test():
         'imgbb_configurado': bool(IMGBB_API_KEY),
         'pollinations_disponible': True,
         'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'Imgbb + Pollinations Kontext',
+        'modelo_editar': 'FLUX.1-Kontext-Dev (HF Space)',
         'message': '🎨 Sistema imagen completo activo'
     })
