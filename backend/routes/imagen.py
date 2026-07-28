@@ -2,7 +2,7 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Primario: NVIDIA FLUX.1-schnell (crear)
-# 🎨 Editar: NVIDIA qwen-image-edit
+# 🎨 Editar: Hugging Face Qwen-Image-Edit
 # 🥈 Respaldo: Hugging Face (crear)
 # 🥉 Último respaldo: Pollinations AI (crear)
 # ===================================
@@ -24,10 +24,12 @@ NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY')
 HUGGINGFACE_API_KEY = os.getenv('HUGGINGFACE_API_KEY')
 
 NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell"
-NVIDIA_EDIT_URL = "https://ai.api.nvidia.com/v1/genai/qwen/qwen-image-edit"
 
 HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
+
+QWEN_EDIT_MODEL = "Qwen/Qwen-Image-Edit"
+QWEN_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{QWEN_EDIT_MODEL}"
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
@@ -79,7 +81,6 @@ def generar_con_nvidia(prompt, width, height):
 
         if response.status_code == 200:
             data = response.json()
-            # NVIDIA devuelve imagen en base64 dentro de 'artifacts' o 'image'
             if 'artifacts' in data and len(data['artifacts']) > 0:
                 imagen_b64 = data['artifacts'][0].get('base64', '')
             elif 'image' in data:
@@ -96,12 +97,8 @@ def generar_con_nvidia(prompt, width, height):
         return None, f"NVIDIA Error: {str(e)}"
 
 # ===================================
-# # ===================================
 # 🎨 Hugging Face Qwen-Image-Edit (EDITAR)
 # ===================================
-
-QWEN_EDIT_MODEL = "Qwen/Qwen-Image-Edit"
-QWEN_EDIT_URL = f"https://router.huggingface.co/hf-inference/models/{QWEN_EDIT_MODEL}"
 
 def editar_con_huggingface(prompt, imagen_base64):
     if not HUGGINGFACE_API_KEY:
@@ -121,7 +118,6 @@ def editar_con_huggingface(prompt, imagen_base64):
             "X-Wait-For-Model": "true"
         }
 
-        # HF acepta la imagen como bytes + prompt en el header
         params = {"prompt": prompt}
 
         response = requests.post(
@@ -133,7 +129,6 @@ def editar_con_huggingface(prompt, imagen_base64):
         )
 
         if response.status_code == 200:
-            # HF devuelve la imagen editada como bytes
             imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
             imagen_url = f"data:image/png;base64,{imagen_editada_b64}"
             return imagen_url, None
@@ -142,6 +137,7 @@ def editar_con_huggingface(prompt, imagen_base64):
 
     except Exception as e:
         return None, f"HF Edit Error: {str(e)}"
+
 # ===================================
 # 🥈 Hugging Face (Respaldo Crear)
 # ===================================
@@ -314,13 +310,13 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        imagen_url, error = editar_con_nvidia(prompt, imagen_base64)
+        imagen_url, error = editar_con_huggingface(prompt, imagen_base64)
 
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'NVIDIA qwen-image-edit',
+                'proveedor': 'Hugging Face Qwen-Image-Edit',
                 'success': True
             })
 
@@ -350,6 +346,6 @@ def test():
         'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
         'pollinations_disponible': True,
         'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'NVIDIA qwen-image-edit',
+        'modelo_editar': 'Hugging Face Qwen-Image-Edit',
         'message': '🎨 Sistema imagen: NVIDIA + HF + Pollinations activo'
     })
