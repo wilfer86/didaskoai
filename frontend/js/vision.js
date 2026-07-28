@@ -7,10 +7,15 @@ let imagenSeleccionada = null;
 
 // Cuando el usuario selecciona una imagen
 document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('vision-file');
-    if (fileInput) {
-        fileInput.addEventListener('change', manejarSeleccionArchivo);
-    }
+  const fileInput = document.getElementById('vision-file');
+if (fileInput) {
+    fileInput.addEventListener('change', manejarSeleccionArchivo);
+}
+
+const camaraInput = document.getElementById('vision-camara');
+if (camaraInput) {
+    camaraInput.addEventListener('change', manejarSeleccionArchivo);
+}
 
     const inputTexto = document.getElementById('vision-input');
     if (inputTexto) {
