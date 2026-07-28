@@ -1,6 +1,6 @@
 // ==========================================
 // vision.js - Didasko AI
-// Analizar fotos con Gemini Vision
+// Analizar fotos con NVIDIA/Gemini Vision
 // ==========================================
 
 let imagenSeleccionada = null;
@@ -27,13 +27,11 @@ function manejarSeleccionArchivo(evento) {
     const archivo = evento.target.files[0];
     if (!archivo) return;
 
-    // Validar que sea imagen
     if (!archivo.type.startsWith('image/')) {
         mostrarErrorVision('El archivo debe ser una imagen');
         return;
     }
 
-    // Validar tamaño (max 10 MB)
     if (archivo.size > 10 * 1024 * 1024) {
         mostrarErrorVision('La imagen es muy grande (máximo 10 MB)');
         return;
@@ -67,18 +65,15 @@ async function analizarImagen() {
     const resultado = document.getElementById('vision-resultado');
     const prompt = input.value.trim();
 
-    // Validar que haya imagen
     if (!imagenSeleccionada) {
         mostrarErrorVision('Primero selecciona una imagen con el botón 📸');
         return;
     }
 
-    // Preparar imagen actual para mostrar después
     const reader = new FileReader();
     reader.onload = async function(e) {
         const imagenBase64 = e.target.result;
 
-        // Mostrar loader
         resultado.innerHTML = `
             <div class="vision-analizando">
                 <img src="${imagenBase64}" alt="Analizando" class="preview-img">
@@ -106,7 +101,6 @@ async function analizarImagen() {
             if (data.success) {
                 mostrarAnalisis(imagenBase64, data.respuesta);
 
-                // Contar tarea para publicidad
                 if (typeof contarTareaPublicidad === 'function') {
                     contarTareaPublicidad('vision');
                 }
@@ -137,6 +131,9 @@ function mostrarAnalisis(imagenBase64, respuesta) {
             </button>
         </div>
     `;
+
+    // 🧮 Renderizar fórmulas matemáticas con MathJax
+    renderizarMatematicasVision(resultado);
 }
 
 // Mostrar error
@@ -157,8 +154,19 @@ function analizarOtraFoto() {
     document.getElementById('vision-resultado').innerHTML = '';
 }
 
-// Formatear texto usando marked.js (renderiza Markdown completo)
+// 🧮 Normalizar LaTeX (arregla el formato raro de NVIDIA)
+function normalizarLatexVision(texto) {
+    texto = texto.replace(/\(\((.+?)\)\)/g, '$$$1$$');
+    texto = texto.replace(/\((\\[a-zA-Z]+.*?)\)/g, '$$$1$$');
+    texto = texto.replace(/\\\((.+?)\\\)/g, '$$$1$$');
+    texto = texto.replace(/\\\[(.+?)\\\]/g, '$$$$$1$$$$');
+    return texto;
+}
+
+// Formatear texto usando marked.js
 function formatearTextoVision(texto) {
+    texto = normalizarLatexVision(texto);
+
     if (typeof marked !== 'undefined') {
         marked.setOptions({
             breaks: true,
@@ -166,7 +174,6 @@ function formatearTextoVision(texto) {
         });
         return marked.parse(texto);
     } else {
-        // Fallback si marked no cargó
         return texto
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -174,6 +181,15 @@ function formatearTextoVision(texto) {
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.+?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>');
+    }
+}
+
+// 🧮 Renderizar fórmulas matemáticas
+function renderizarMatematicasVision(elemento) {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([elemento]).catch(function(err) {
+            if (CONFIG.DEBUG) console.error('MathJax error:', err);
+        });
     }
 }
 
