@@ -3,7 +3,7 @@
 # ===================================
 # 🥇 Crear: NVIDIA FLUX.1-schnell
 # 🎨 Editar: HF Space FLUX.1-Kontext-Dev (gradio_client + Imgbb)
-# 🥈 Respaldo crear: Hugging Face SD 3.5
+# 🥈 Respaldo crear: Hugging Face FLUX schnell
 # 🥉 Último respaldo: Pollinations AI
 # ===================================
 
@@ -27,7 +27,8 @@ IMGBB_API_KEY = os.getenv('IMGBB_API_KEY')
 
 NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell"
 
-HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-3.5-large'
+# Cambiado a modelo FLUX que sí funciona en hf-inference
+HUGGINGFACE_MODEL = 'black-forest-labs/FLUX.1-schnell'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
@@ -89,7 +90,7 @@ def subir_a_imgbb(imagen_base64):
         return None, f"Imgbb Error: {str(e)}"
 
 # ===================================
-# 🥇 NVIDIA FLUX.1-schnell (CREAR)
+# 🥇 NVIDIA FLUX.1-schnell (CREAR) - timeout ampliado
 # ===================================
 
 def generar_con_nvidia(prompt, width, height):
@@ -111,11 +112,12 @@ def generar_con_nvidia(prompt, width, height):
             "steps": 4
         }
 
+        # ⬆️ Timeout aumentado a 120 segundos
         response = requests.post(
             NVIDIA_FLUX_URL,
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=120
         )
 
         if response.status_code == 200:
@@ -140,18 +142,12 @@ def generar_con_nvidia(prompt, width, height):
 # ===================================
 
 def editar_con_flux_kontext(prompt, imagen_url_publica):
-    """
-    Edita imagen usando el Space oficial FLUX.1-Kontext-Dev.
-    Requiere URL pública de la imagen.
-    """
     try:
-        # Conectar al Space (con token HF si existe, mejora estabilidad)
         if HUGGINGFACE_API_KEY:
             client = Client(FLUX_KONTEXT_SPACE, hf_token=HUGGINGFACE_API_KEY)
         else:
             client = Client(FLUX_KONTEXT_SPACE)
 
-        # Llamar al endpoint /infer
         result = client.predict(
             input_image=handle_file(imagen_url_publica),
             prompt=prompt,
@@ -162,12 +158,9 @@ def editar_con_flux_kontext(prompt, imagen_url_publica):
             api_name="/infer"
         )
 
-        # result es una tupla: (dict_imagen, seed)
-        # El dict de imagen tiene 'path' (local en el space) o 'url'
         if isinstance(result, tuple) and len(result) > 0:
             imagen_data = result[0]
 
-            # Puede venir como path local o URL
             if isinstance(imagen_data, dict):
                 imagen_path = imagen_data.get('url') or imagen_data.get('path')
             elif isinstance(imagen_data, str):
@@ -175,9 +168,7 @@ def editar_con_flux_kontext(prompt, imagen_url_publica):
             else:
                 return None, f"Formato inesperado: {type(imagen_data)}"
 
-            # Descargar la imagen resultado
             if imagen_path.startswith('http'):
-                # Es URL directa
                 img_response = requests.get(imagen_path, timeout=60)
                 if img_response.status_code == 200:
                     imagen_b64 = base64.b64encode(img_response.content).decode('utf-8')
@@ -185,7 +176,6 @@ def editar_con_flux_kontext(prompt, imagen_url_publica):
                 else:
                     return None, f"Error descargando resultado: {img_response.status_code}"
             else:
-                # Es path local (gradio_client ya lo descargó)
                 with open(imagen_path, 'rb') as f:
                     imagen_b64 = base64.b64encode(f.read()).decode('utf-8')
                 return f"data:image/png;base64,{imagen_b64}", None
@@ -196,7 +186,7 @@ def editar_con_flux_kontext(prompt, imagen_url_publica):
         return None, f"FLUX Kontext Space Error: {str(e)}"
 
 # ===================================
-# 🥈 Hugging Face SD 3.5 (Respaldo Crear)
+# 🥈 Hugging Face FLUX schnell (Respaldo Crear)
 # ===================================
 
 def generar_con_huggingface(prompt, width, height):
@@ -222,7 +212,7 @@ def generar_con_huggingface(prompt, width, height):
             HUGGINGFACE_URL,
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=90
         )
 
         if response.status_code == 200:
@@ -294,7 +284,7 @@ def crear_imagen():
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
-                'proveedor': 'NVIDIA FLUX.1-schnell',
+                'proveedor': 'Didasko AI',
                 'formato': formato,
                 'success': True
             })
@@ -308,7 +298,7 @@ def crear_imagen():
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
-                'proveedor': 'Hugging Face (respaldo)',
+                'proveedor': 'Didasko AI Respaldo',
                 'formato': formato,
                 'success': True,
                 'nota_nvidia': error_nv
@@ -323,7 +313,7 @@ def crear_imagen():
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
-                'proveedor': 'Pollinations AI (respaldo final)',
+                'proveedor': 'Didasko AI Respaldo',
                 'formato': formato,
                 'success': True,
                 'nota_nvidia': error_nv,
@@ -367,7 +357,6 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        # PASO 1: Subir imagen a Imgbb
         print("📤 Subiendo imagen a Imgbb...")
         url_publica, error_upload = subir_a_imgbb(imagen_base64)
 
@@ -380,7 +369,6 @@ def editar_imagen():
 
         print(f"✅ Imagen subida: {url_publica}")
 
-        # PASO 2: Editar con FLUX Kontext Space
         print("🎨 Editando con FLUX.1-Kontext-Dev...")
         imagen_url, error = editar_con_flux_kontext(prompt, url_publica)
 
@@ -388,7 +376,7 @@ def editar_imagen():
             return jsonify({
                 'imagen_url': imagen_url,
                 'prompt_usado': prompt,
-                'proveedor': 'FLUX.1-Kontext-Dev (HF Space)',
+                'proveedor': 'Didasko AI',
                 'success': True
             })
 
