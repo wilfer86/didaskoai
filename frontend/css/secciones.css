@@ -1,6 +1,6 @@
 /* ==========================================
    secciones.css - Didasko AI
-   Estilos de las secciones internas (COMPLETO CORREGIDO)
+   Estilos de las secciones internas (COMPLETO CORREGIDO V2)
    ========================================== */
 
 /* ===== APLICAR FONDO A TODAS LAS PANTALLAS ===== */
@@ -40,18 +40,33 @@
     min-height: 55vh;
 }
 
+#imagen-resultado img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(244, 196, 48, 0.4);
+}
+
+#imagen-resultado:empty::before {
+    content: '🖼️';
+    font-size: 80px;
+    opacity: 0.3;
+    display: block;
+    text-align: center;
+}
+
 /* 📱 En móvil ajustar recuadro imagen */
 @media (max-width: 768px) {
     #imagen-resultado {
-        min-height: 35vh;
-        max-height: 45vh;
+        min-height: 50vh;
+        max-height: 60vh;
         overflow-y: auto;
         padding: 10px;
     }
 
-    /* Imagen generada se escala completa dentro del recuadro */
+    /* Imagen generada más pequeña en móvil */
     #imagen-resultado .imagen-resultado-img {
-        max-height: 30vh;
+        max-height: 35vh;
         width: auto;
         height: auto;
         object-fit: contain;
@@ -61,12 +76,23 @@
     .imagen-acciones {
         flex-direction: column;
         gap: 8px;
+        align-items: center;
     }
 
     .btn-descargar,
     .btn-otra {
-        width: 90%;
-        padding: 8px 15px;
+        width: 85%;
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    /* Ajustar padding del contenido de imagen */
+    .imagen-generada {
+        padding: 10px;
+    }
+
+    .prompt-usado,
+    .formato-usado {
         font-size: 13px;
     }
 }
@@ -236,6 +262,27 @@
     box-shadow: 0 6px 15px rgba(244, 196, 48, 0.5);
 }
 
+/* 📱 Input area más compacto en móvil */
+@media (max-width: 768px) {
+    .input-area {
+        width: 92%;
+        margin: 10px auto;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .input-area input[type="text"] {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    .input-area button {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+    }
+}
+
 /* ===== BÚHO MASCOTA ===== */
 
 .mascota {
@@ -306,7 +353,8 @@
     box-shadow: 0 12px 30px rgba(244, 196, 48, 0.5);
 }
 
-    /* Pagos móvil */
+/* Pagos móvil */
+@media (max-width: 768px) {
     .logo-pago,
     .pago-card img {
         width: 110px;
@@ -314,7 +362,6 @@
         max-width: 80%;
     }
 
-    /* Contenedor de tarjetas Apoyar en móvil */
     #apoyar .contenido {
         display: flex;
         flex-direction: column;
@@ -342,6 +389,7 @@
         word-break: break-all;
     }
 }
+
 .pago-card p {
     color: var(--azul-oscuro);
     font-size: 16px;
@@ -416,6 +464,21 @@
     border-radius: 5px;
 }
 
+/* Scrollbar dentro de imagen-resultado */
+#imagen-resultado::-webkit-scrollbar {
+    width: 8px;
+}
+
+#imagen-resultado::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+#imagen-resultado::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--dorado), var(--dorado-oscuro));
+    border-radius: 4px;
+}
+
 /* ===== SELECTOR DE FORMATO ===== */
 
 .formato-selector {
@@ -476,12 +539,16 @@
 /* Responsive selector formato */
 @media (max-width: 768px) {
     .formato-selector {
-        margin: 10px auto;
-        padding: 10px 15px;
+        margin: 8px auto;
+        padding: 8px 12px;
     }
-    
+
     .btn-formato {
-        padding: 6px 12px;
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+
+    .formato-label {
         font-size: 13px;
     }
 }
@@ -940,4 +1007,18 @@
     color: #2c1810;
     border-color: #f4b942;
     box-shadow: 0 4px 12px rgba(244, 185, 66, 0.4);
+}
+
+/* 📱 Selector Crear/Editar más compacto en móvil */
+@media (max-width: 768px) {
+    .modo-selector {
+        max-width: 90%;
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .btn-modo {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
 }
