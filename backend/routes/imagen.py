@@ -3,7 +3,7 @@
 # ===================================
 # 🥇 Crear: NVIDIA FLUX.1-schnell
 # 🎨 Editar: HF Space FLUX.1-Kontext-Dev (gradio_client + Imgbb)
-# 🥈 Respaldo crear: Hugging Face FLUX schnell
+# 🥈 Respaldo crear: Hugging Face SDXL
 # 🥉 Último respaldo: Pollinations AI
 # ===================================
 
@@ -27,8 +27,8 @@ IMGBB_API_KEY = os.getenv('IMGBB_API_KEY')
 
 NVIDIA_FLUX_URL = "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell"
 
-# Cambiado a modelo FLUX que sí funciona en hf-inference
-HUGGINGFACE_MODEL = 'black-forest-labs/FLUX.1-schnell'
+# Modelo actualizado que sí funciona en hf-inference
+HUGGINGFACE_MODEL = 'stabilityai/stable-diffusion-xl-base-1.0'
 HUGGINGFACE_URL = f'https://router.huggingface.co/hf-inference/models/{HUGGINGFACE_MODEL}'
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
@@ -90,7 +90,7 @@ def subir_a_imgbb(imagen_base64):
         return None, f"Imgbb Error: {str(e)}"
 
 # ===================================
-# 🥇 NVIDIA FLUX.1-schnell (CREAR) - timeout ampliado
+# 🥇 NVIDIA FLUX.1-schnell (CREAR) - timeout ampliado a 180s
 # ===================================
 
 def generar_con_nvidia(prompt, width, height):
@@ -112,12 +112,12 @@ def generar_con_nvidia(prompt, width, height):
             "steps": 4
         }
 
-        # ⬆️ Timeout aumentado a 120 segundos
+        # ⬆️ Timeout ampliado a 180 segundos
         response = requests.post(
             NVIDIA_FLUX_URL,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=180
         )
 
         if response.status_code == 200:
@@ -186,7 +186,7 @@ def editar_con_flux_kontext(prompt, imagen_url_publica):
         return None, f"FLUX Kontext Space Error: {str(e)}"
 
 # ===================================
-# 🥈 Hugging Face FLUX schnell (Respaldo Crear)
+# 🥈 Hugging Face SDXL (Respaldo Crear)
 # ===================================
 
 def generar_con_huggingface(prompt, width, height):
@@ -204,7 +204,7 @@ def generar_con_huggingface(prompt, width, height):
             'parameters': {
                 'width': width,
                 'height': height,
-                'num_inference_steps': 4
+                'num_inference_steps': 25
             }
         }
 
@@ -406,7 +406,7 @@ def test():
         'huggingface_configurado': bool(HUGGINGFACE_API_KEY),
         'imgbb_configurado': bool(IMGBB_API_KEY),
         'pollinations_disponible': True,
-        'modelo_crear': 'NVIDIA FLUX.1-schnell',
-        'modelo_editar': 'FLUX.1-Kontext-Dev (HF Space)',
+        'modelo_crear': 'Didasko AI',
+        'modelo_editar': 'Didasko AI',
         'message': '🎨 Sistema imagen completo activo'
     })
