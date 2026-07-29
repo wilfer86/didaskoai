@@ -1,6 +1,6 @@
 // ==========================================
 // imagen.js - Didasko AI
-// Crear y Editar imágenes (NVIDIA FLUX + qwen-image-edit)
+// Crear y Editar imágenes
 // ==========================================
 
 // Estado global
@@ -14,7 +14,6 @@ let imagenParaEditar = null;          // base64 de la imagen subida
 function seleccionarModo(modo) {
     modoImagenActual = modo;
 
-    // Actualizar botones activos
     document.querySelectorAll('.btn-modo').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.modo === modo);
     });
@@ -68,12 +67,12 @@ function manejarImagenEditar(evento) {
     if (!archivo) return;
 
     if (!archivo.type.startsWith('image/')) {
-        mostrarErrorImagen('El archivo debe ser una imagen');
+        mostrarImagenError('El archivo debe ser una imagen');
         return;
     }
 
     if (archivo.size > 10 * 1024 * 1024) {
-        mostrarErrorImagen('Imagen muy grande (máximo 10 MB)');
+        mostrarImagenError('Imagen muy grande (máximo 10 MB)');
         return;
     }
 
@@ -112,15 +111,15 @@ async function crearImagen() {
     const prompt = input.value.trim();
 
     if (!prompt) {
-        mostrarErrorImagen('Escribe una descripción de la imagen');
+        mostrarImagenError('Escribe una descripción de la imagen');
         return;
     }
 
     resultado.innerHTML = `
         <div class="loader-imagen">
             <span class="loader"></span>
-            <p>🎨 Generando tu imagen con NVIDIA FLUX...</p>
-            <p class="texto-espera">Esto puede tomar 10-30 segundos</p>
+            <p>🦉 Creando con Didasko AI...</p>
+            <p class="texto-espera">Esto puede tomar entre 10 y 60 segundos</p>
         </div>
     `;
 
@@ -145,10 +144,10 @@ async function crearImagen() {
                 contarTareaPublicidad('imagen');
             }
         } else {
-            mostrarErrorImagen(data.message || 'Error al crear imagen');
+            mostrarImagenError(data.message || 'Error al crear imagen');
         }
     } catch (error) {
-        mostrarErrorImagen('No se pudo conectar con el servidor');
+        mostrarImagenError('No se pudo conectar con el servidor');
         if (CONFIG.DEBUG) console.error('Error crear imagen:', error);
     }
 }
@@ -162,12 +161,12 @@ async function editarImagen() {
     const prompt = input.value.trim();
 
     if (!imagenParaEditar) {
-        mostrarErrorImagen('Primero sube una imagen con 📤');
+        mostrarImagenError('Primero sube una imagen con 📤');
         return;
     }
 
     if (!prompt) {
-        mostrarErrorImagen('Describe qué quieres cambiar en la imagen');
+        mostrarImagenError('Describe qué quieres cambiar en la imagen');
         return;
     }
 
@@ -175,8 +174,8 @@ async function editarImagen() {
         <div class="loader-imagen">
             <img src="${imagenParaEditar}" alt="Editando" class="preview-img" style="opacity:0.5">
             <span class="loader"></span>
-            <p>🎨 Editando tu imagen con NVIDIA...</p>
-            <p class="texto-espera">Esto puede tomar 15-45 segundos</p>
+            <p>🦉 Editando con Didasko AI...</p>
+            <p class="texto-espera">Esto puede tomar entre 15 y 60 segundos</p>
         </div>
     `;
 
@@ -201,10 +200,10 @@ async function editarImagen() {
                 contarTareaPublicidad('imagen');
             }
         } else {
-            mostrarErrorImagen(data.message || 'Error al editar imagen');
+            mostrarImagenError(data.message || 'Error al editar imagen');
         }
     } catch (error) {
-        mostrarErrorImagen('No se pudo conectar con el servidor');
+        mostrarImagenError('No se pudo conectar con el servidor');
         if (CONFIG.DEBUG) console.error('Error editar imagen:', error);
     }
 }
@@ -287,7 +286,7 @@ function editarEstaImagen(url) {
 // ==========================================
 // Mostrar error
 // ==========================================
-function mostrarErrorImagen(mensaje) {
+function mostrarImagenError(mensaje) {
     const resultado = document.getElementById('imagen-resultado');
     resultado.innerHTML = `
         <div class="mensaje-error">
