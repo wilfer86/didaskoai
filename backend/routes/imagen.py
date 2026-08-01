@@ -28,7 +28,7 @@ POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
 
 # Modelo Gemini para imágenes
-GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
+GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image-preview"
 
 # Cliente Gemini
 gemini_client = None
