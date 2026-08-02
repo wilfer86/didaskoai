@@ -1,7 +1,8 @@
 # ===================================
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
-# 🥇 Crear + Editar: Google Gemini 2.0 Flash Image
+# 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
+# 🎨 Editar: Pollinations Kontext + Imgbb
 # 🥈 Respaldo crear: Pollinations AI
 # ===================================
 
@@ -9,12 +10,8 @@ import os
 import base64
 import random
 import urllib.parse
-from io import BytesIO
-from flask import Blueprint, request, jsonify
-from google import genai
-from google.genai import types
-from PIL import Image
 import requests
+from flask import Blueprint, request, jsonify
 
 imagen_bp = Blueprint('imagen', __name__)
 
@@ -22,21 +19,20 @@ imagen_bp = Blueprint('imagen', __name__)
 # Configuración
 # ===================================
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
+CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
+IMGBB_API_KEY = os.getenv('IMGBB_API_KEY')
+
+# Cloudflare Workers AI - FLUX-1-schnell
+CLOUDFLARE_FLUX_URL = (
+    f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
+    f"/ai/run/@cf/black-forest-labs/flux-1-schnell"
+) if CLOUDFLARE_ACCOUNT_ID else None
 
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
 
-# Modelo Gemini para imágenes
-GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image-preview"
-
-# Cliente Gemini
-gemini_client = None
-if GEMINI_API_KEY:
-    try:
-        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-    except Exception as e:
-        print(f"⚠️ Error inicializando Gemini: {e}")
+IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 # ===================================
 # Funciones auxiliares
@@ -54,83 +50,124 @@ def formato_a_dimensiones(formato):
     return formatos.get(formato, (1024, 1024))
 
 # ===================================
-# 🥇 Google Gemini (CREAR imagen)
+# 📤 Subir imagen a Imgbb (URL pública)
 # ===================================
 
-def crear_con_gemini(prompt):
-    """
-    Genera imagen usando Google Gemini 2.0 Flash Image Generation.
-    """
-    if not gemini_client:
-        return None, "Gemini API Key no configurada"
+def subir_a_imgbb(imagen_base64):
+    if not IMGBB_API_KEY:
+        return None, "Imgbb API Key no configurada"
 
     try:
-        response = gemini_client.models.generate_content(
-            model=GEMINI_IMAGE_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=['Text', 'Image']
-            )
-        )
-
-        # Buscar la imagen en la respuesta
-        for part in response.candidates[0].content.parts:
-            if part.inline_data is not None:
-                imagen_bytes = part.inline_data.data
-                imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
-                imagen_url = f"data:image/png;base64,{imagen_b64}"
-                return imagen_url, None
-
-        return None, "Gemini no devolvió imagen"
-
-    except Exception as e:
-        return None, f"Gemini Error: {str(e)}"
-
-# ===================================
-# 🎨 Google Gemini (EDITAR imagen)
-# ===================================
-
-def editar_con_gemini(prompt, imagen_base64):
-    """
-    Edita imagen usando Google Gemini 2.0 Flash Image Generation.
-    """
-    if not gemini_client:
-        return None, "Gemini API Key no configurada"
-
-    try:
-        # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
-        # Convertir base64 a PIL Image
-        imagen_bytes = base64.b64decode(imagen_base64)
-        imagen_pil = Image.open(BytesIO(imagen_bytes))
+        payload = {
+            "key": IMGBB_API_KEY,
+            "image": imagen_base64
+        }
 
-        # Convertir a RGB si es necesario
-        if imagen_pil.mode != 'RGB':
-            imagen_pil = imagen_pil.convert('RGB')
-
-        # Enviar imagen + prompt a Gemini
-        response = gemini_client.models.generate_content(
-            model=GEMINI_IMAGE_MODEL,
-            contents=[prompt, imagen_pil],
-            config=types.GenerateContentConfig(
-                response_modalities=['Text', 'Image']
-            )
+        response = requests.post(
+            IMGBB_UPLOAD_URL,
+            data=payload,
+            timeout=60
         )
 
-        # Buscar la imagen editada en la respuesta
-        for part in response.candidates[0].content.parts:
-            if part.inline_data is not None:
-                imagen_editada_bytes = part.inline_data.data
-                imagen_b64 = base64.b64encode(imagen_editada_bytes).decode('utf-8')
-                imagen_url = f"data:image/png;base64,{imagen_b64}"
-                return imagen_url, None
-
-        return None, "Gemini no devolvió imagen editada"
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('success'):
+                return data['data']['url'], None
+            else:
+                return None, f"Imgbb error: {data}"
+        else:
+            return None, f"Imgbb Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"Gemini Edit Error: {str(e)}"
+        return None, f"Imgbb Error: {str(e)}"
+
+# ===================================
+# 🥇 Cloudflare Workers AI - FLUX schnell (CREAR)
+# ===================================
+
+def crear_con_cloudflare(prompt, width, height):
+    """
+    Genera imagen usando Cloudflare Workers AI (FLUX-1-schnell).
+    Gratis: 10,000 requests/día.
+    """
+    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+        return None, "Cloudflare no configurado"
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "prompt": prompt,
+            "steps": 4  # FLUX schnell usa 4 pasos
+        }
+
+        response = requests.post(
+            CLOUDFLARE_FLUX_URL,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Cloudflare devuelve la imagen en base64 dentro de result.image
+            if data.get('success') and 'result' in data:
+                imagen_b64 = data['result'].get('image', '')
+                if imagen_b64:
+                    imagen_url = f"data:image/png;base64,{imagen_b64}"
+                    return imagen_url, None
+                else:
+                    return None, f"Cloudflare: no devolvió imagen - {str(data)[:200]}"
+            else:
+                return None, f"Cloudflare respuesta inesperada: {str(data)[:200]}"
+        else:
+            return None, f"Cloudflare Código {response.status_code}: {response.text[:200]}"
+
+    except Exception as e:
+        return None, f"Cloudflare Error: {str(e)}"
+
+# ===================================
+# 🎨 Pollinations Kontext + Imgbb (EDITAR)
+# ===================================
+
+def editar_con_pollinations(prompt, imagen_url_publica):
+    """
+    Edita imagen usando Pollinations Kontext.
+    Requiere URL pública (viene de Imgbb).
+    """
+    try:
+        prompt_codificado = urllib.parse.quote(prompt)
+        imagen_codificada = urllib.parse.quote(imagen_url_publica, safe='')
+        seed = random.randint(1, 999999)
+
+        edit_url = (
+            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
+            f"?model=kontext"
+            f"&width=1024"
+            f"&height=1024"
+            f"&seed={seed}"
+            f"&nologo=true"
+            f"&image={imagen_codificada}"
+        )
+
+        response = requests.get(edit_url, timeout=180)
+
+        if response.status_code == 200:
+            imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
+            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
+            return imagen_final, None
+        else:
+            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
+
+    except Exception as e:
+        return None, f"Pollinations Edit Error: {str(e)}"
 
 # ===================================
 # 🥈 Pollinations AI (Respaldo crear)
@@ -183,9 +220,9 @@ def crear_imagen():
         width, height = formato_a_dimensiones(formato)
         prompt_mejorado = mejorar_prompt(prompt_original)
 
-        # 🥇 Google Gemini
-        print("🦉 Creando imagen con Gemini...")
-        imagen_url, error_gemini = crear_con_gemini(prompt_mejorado)
+        # 🥇 Cloudflare Workers AI
+        print("🦉 Creando imagen con Cloudflare Workers AI...")
+        imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
         if imagen_url:
             return jsonify({
                 'imagen_url': imagen_url,
@@ -196,7 +233,7 @@ def crear_imagen():
                 'success': True
             })
 
-        print(f"⚠️ Gemini falló: {error_gemini}")
+        print(f"⚠️ Cloudflare falló: {error_cf}")
 
         # 🥈 Pollinations (respaldo)
         print("🔄 Intentando con respaldo Pollinations...")
@@ -209,12 +246,12 @@ def crear_imagen():
                 'proveedor': 'Didasko AI Respaldo',
                 'formato': formato,
                 'success': True,
-                'nota_gemini': error_gemini
+                'nota_cloudflare': error_cf
             })
 
         return jsonify({
             'error': 'Todos los proveedores fallaron',
-            'message': f'Gemini: {error_gemini} | Pollinations: {error_pol}',
+            'message': f'Cloudflare: {error_cf} | Pollinations: {error_pol}',
             'success': False
         }), 500
 
@@ -249,8 +286,22 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        print("🎨 Editando imagen con Gemini...")
-        imagen_url, error = editar_con_gemini(prompt, imagen_base64)
+        # PASO 1: Subir imagen a Imgbb
+        print("📤 Subiendo imagen a Imgbb...")
+        url_publica, error_upload = subir_a_imgbb(imagen_base64)
+
+        if not url_publica:
+            return jsonify({
+                'error': 'Error al subir imagen',
+                'message': error_upload,
+                'success': False
+            }), 500
+
+        print(f"✅ Imagen subida: {url_publica}")
+
+        # PASO 2: Editar con Pollinations Kontext
+        print("🎨 Editando con Pollinations Kontext...")
+        imagen_url, error = editar_con_pollinations(prompt, url_publica)
 
         if imagen_url:
             return jsonify({
@@ -282,9 +333,10 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'gemini_configurado': bool(GEMINI_API_KEY),
+        'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
+        'imgbb_configurado': bool(IMGBB_API_KEY),
         'pollinations_disponible': True,
-        'modelo_crear': 'Google Gemini 2.0 Flash Image',
-        'modelo_editar': 'Google Gemini 2.0 Flash Image',
-        'message': '🎨 Sistema imagen con Gemini activo'
+        'modelo_crear': 'Cloudflare Workers AI (FLUX schnell)',
+        'modelo_editar': 'Pollinations Kontext + Imgbb',
+        'message': '🎨 Sistema imagen con Cloudflare activo'
     })
