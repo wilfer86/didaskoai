@@ -32,13 +32,25 @@ function seleccionarModo(modo) {
     } else {
         formatoSelector.style.display = 'none';
         btnSubir.style.display = 'inline-block';
-        input.placeholder = 'Describe cómo editar la imagen...';
+        input.placeholder = 'Describe cómo transformar la imagen...';
         resultado.innerHTML = `
             <div class="editar-hint">
-                <p>🎨 Modo <strong>Editar</strong></p>
+                <div class="aviso-experimental">
+                    <p>🧪 <strong>Función experimental en aprendizaje</strong></p>
+                    <p class="aviso-sub">Este modelo aún está en fase de pruebas.<br>Los resultados pueden variar y no siempre serán perfectos.</p>
+                </div>
+                <p>🎨 Modo <strong>Editar / Transformar</strong></p>
                 <p>1️⃣ Sube una imagen con 📤</p>
-                <p>2️⃣ Escribe qué quieres cambiar</p>
+                <p>2️⃣ Escribe cómo quieres transformarla</p>
                 <p>3️⃣ Presiona ➤</p>
+                <div class="tips-edicion">
+                    <p>💡 <strong>Tips para mejores resultados:</strong></p>
+                    <p>✅ "Convertir a estilo pintura al óleo"</p>
+                    <p>✅ "Agregar fondo espacial"</p>
+                    <p>✅ "Estilo anime japonés"</p>
+                    <p>✅ "Cambiar a blanco y negro artístico"</p>
+                    <p>❌ Evita instrucciones muy precisas (ej: "solo cambia el ojo derecho")</p>
+                </div>
             </div>
         `;
     }
@@ -84,7 +96,8 @@ function manejarImagenEditar(evento) {
         resultado.innerHTML = `
             <div class="editar-preview">
                 <img src="${imagenParaEditar}" alt="Imagen a editar" class="preview-img">
-                <p class="preview-hint">✅ Imagen cargada. Ahora escribe qué cambios quieres hacer y presiona ➤</p>
+                <p class="preview-hint">✅ Imagen cargada. Ahora escribe cómo transformarla y presiona ➤</p>
+                <p class="aviso-mini">🧪 Recuerda: modelo experimental, los resultados pueden variar</p>
             </div>
         `;
     };
@@ -166,7 +179,7 @@ async function editarImagen() {
     }
 
     if (!prompt) {
-        mostrarImagenError('Describe qué quieres cambiar en la imagen');
+        mostrarImagenError('Describe cómo quieres transformar la imagen');
         return;
     }
 
@@ -174,8 +187,8 @@ async function editarImagen() {
         <div class="loader-imagen">
             <img src="${imagenParaEditar}" alt="Editando" class="preview-img" style="opacity:0.5">
             <span class="loader"></span>
-            <p>🦉 Editando con Didasko AI...</p>
-            <p class="texto-espera">Esto puede tomar entre 15 y 60 segundos</p>
+            <p>🦉 Transformando con Didasko AI...</p>
+            <p class="texto-espera">🧪 Modelo experimental — Esto puede tomar entre 30 y 90 segundos</p>
         </div>
     `;
 
@@ -226,7 +239,7 @@ function mostrarImagen(url, prompt, formato, proveedor) {
                         📥 Descargar
                     </a>
                     <button onclick="editarEstaImagen('${url}')" class="btn-otra">
-                        🎨 Editar esta
+                        🎨 Transformar esta
                     </button>
                     <button onclick="crearOtraImagen()" class="btn-otra">
                         🔄 Crear otra
@@ -247,14 +260,15 @@ function mostrarImagenEditada(url, prompt, proveedor) {
         <div class="imagen-generada">
             <img src="${url}" alt="Imagen editada" class="imagen-resultado-img">
             <div class="imagen-info">
-                <p class="prompt-usado">🎨 Edición: "${prompt}"</p>
+                <p class="prompt-usado">🎨 Transformación: "${prompt}"</p>
                 <p class="formato-usado">⚡ ${proveedor} | 🦉 Didasko AI</p>
+                <p class="aviso-resultado">🧪 Resultado experimental — Modelo en aprendizaje</p>
                 <div class="imagen-acciones">
-                    <a href="${url}" download="didasko-editada.png" target="_blank" class="btn-descargar">
+                    <a href="${url}" download="didasko-transformada.png" target="_blank" class="btn-descargar">
                         📥 Descargar
                     </a>
                     <button onclick="editarEstaImagen('${url}')" class="btn-otra">
-                        🎨 Editar de nuevo
+                        🎨 Transformar de nuevo
                     </button>
                     <button onclick="crearOtraImagen()" class="btn-otra">
                         🔄 Empezar otra
@@ -276,7 +290,8 @@ function editarEstaImagen(url) {
     resultado.innerHTML = `
         <div class="editar-preview">
             <img src="${url}" alt="Imagen a editar" class="preview-img">
-            <p class="preview-hint">✅ Imagen lista para editar. Escribe qué cambios quieres hacer y presiona ➤</p>
+            <p class="preview-hint">✅ Imagen lista para transformar. Escribe cómo quieres modificarla y presiona ➤</p>
+            <p class="aviso-mini">🧪 Recuerda: modelo experimental, los resultados pueden variar</p>
         </div>
     `;
 
