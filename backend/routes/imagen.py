@@ -2,7 +2,7 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
-# 🎨 Editar: Pollinations Kontext + Imgbb
+# 🎨 Editar: Cloudflare Workers AI (Stable Diffusion Img2Img)
 # 🥈 Respaldo crear: Pollinations AI
 # ===================================
 
@@ -21,18 +21,21 @@ imagen_bp = Blueprint('imagen', __name__)
 
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
-IMGBB_API_KEY = os.getenv('IMGBB_API_KEY')
 
-# Cloudflare Workers AI - FLUX-1-schnell
+# Cloudflare Workers AI - Crear (FLUX-1-schnell)
 CLOUDFLARE_FLUX_URL = (
     f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
     f"/ai/run/@cf/black-forest-labs/flux-1-schnell"
 ) if CLOUDFLARE_ACCOUNT_ID else None
 
+# Cloudflare Workers AI - Editar (Stable Diffusion Img2Img)
+CLOUDFLARE_EDIT_URL = (
+    f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
+    f"/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img"
+) if CLOUDFLARE_ACCOUNT_ID else None
+
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
-
-IMGBB_UPLOAD_URL = "https://api.imgbb.com/1/upload"
 
 # ===================================
 # Funciones auxiliares
@@ -48,41 +51,6 @@ def formato_a_dimensiones(formato):
         '9:16': (720, 1280)
     }
     return formatos.get(formato, (1024, 1024))
-
-# ===================================
-# 📤 Subir imagen a Imgbb (URL pública)
-# ===================================
-
-def subir_a_imgbb(imagen_base64):
-    if not IMGBB_API_KEY:
-        return None, "Imgbb API Key no configurada"
-
-    try:
-        if ',' in imagen_base64:
-            imagen_base64 = imagen_base64.split(',')[1]
-
-        payload = {
-            "key": IMGBB_API_KEY,
-            "image": imagen_base64
-        }
-
-        response = requests.post(
-            IMGBB_UPLOAD_URL,
-            data=payload,
-            timeout=60
-        )
-
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('success'):
-                return data['data']['url'], None
-            else:
-                return None, f"Imgbb error: {data}"
-        else:
-            return None, f"Imgbb Código {response.status_code}: {response.text[:200]}"
-
-    except Exception as e:
-        return None, f"Imgbb Error: {str(e)}"
 
 # ===================================
 # 🥇 Cloudflare Workers AI - FLUX schnell (CREAR)
@@ -104,7 +72,7 @@ def crear_con_cloudflare(prompt, width, height):
 
         payload = {
             "prompt": prompt,
-            "steps": 4  # FLUX schnell usa 4 pasos
+            "steps": 4
         }
 
         response = requests.post(
@@ -117,7 +85,6 @@ def crear_con_cloudflare(prompt, width, height):
         if response.status_code == 200:
             data = response.json()
 
-            # Cloudflare devuelve la imagen en base64 dentro de result.image
             if data.get('success') and 'result' in data:
                 imagen_b64 = data['result'].get('image', '')
                 if imagen_b64:
@@ -134,40 +101,73 @@ def crear_con_cloudflare(prompt, width, height):
         return None, f"Cloudflare Error: {str(e)}"
 
 # ===================================
-# 🎨 Pollinations Kontext + Imgbb (EDITAR)
+# 🎨 Cloudflare Workers AI - Img2Img (EDITAR)
 # ===================================
 
-def editar_con_pollinations(prompt, imagen_url_publica):
+def editar_con_cloudflare(prompt, imagen_base64):
     """
-    Edita imagen usando Pollinations Kontext.
-    Requiere URL pública (viene de Imgbb).
+    Edita imagen usando Cloudflare Stable Diffusion Img2Img.
+    Recibe la imagen en base64 y la transforma con el prompt.
     """
-    try:
-        prompt_codificado = urllib.parse.quote(prompt)
-        imagen_codificada = urllib.parse.quote(imagen_url_publica, safe='')
-        seed = random.randint(1, 999999)
+    if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
+        return None, "Cloudflare no configurado"
 
-        edit_url = (
-            f"https://image.pollinations.ai/prompt/{prompt_codificado}"
-            f"?model=kontext"
-            f"&width=1024"
-            f"&height=1024"
-            f"&seed={seed}"
-            f"&nologo=true"
-            f"&image={imagen_codificada}"
+    try:
+        # Limpiar prefijo si existe
+        if ',' in imagen_base64:
+            imagen_base64 = imagen_base64.split(',')[1]
+
+        # Decodificar base64 a bytes → luego a array de enteros (formato que Cloudflare acepta)
+        imagen_bytes = base64.b64decode(imagen_base64)
+        imagen_array = list(imagen_bytes)
+
+        headers = {
+            "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "prompt": prompt,
+            "image": imagen_array,
+            "strength": 0.7,  # Qué tanto modificar (0=nada, 1=totalmente nueva)
+            "num_steps": 20,
+            "guidance": 7.5
+        }
+
+        response = requests.post(
+            CLOUDFLARE_EDIT_URL,
+            headers=headers,
+            json=payload,
+            timeout=120
         )
 
-        response = requests.get(edit_url, timeout=180)
-
         if response.status_code == 200:
-            imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-            imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
-            return imagen_final, None
+            # Este endpoint devuelve la imagen directamente como bytes binarios
+            content_type = response.headers.get('Content-Type', '')
+
+            if 'image' in content_type:
+                imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
+                imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
+                return imagen_final, None
+            else:
+                # Puede devolver JSON con la imagen en base64
+                try:
+                    data = response.json()
+                    if data.get('success') and 'result' in data:
+                        imagen_b64 = data['result'].get('image', '')
+                        if imagen_b64:
+                            return f"data:image/png;base64,{imagen_b64}", None
+                    return None, f"Cloudflare Edit respuesta inesperada: {str(data)[:200]}"
+                except:
+                    # Si no es JSON, probablemente son bytes de imagen
+                    imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
+                    imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
+                    return imagen_final, None
         else:
-            return None, f"Pollinations Edit Código {response.status_code}: {response.text[:200]}"
+            return None, f"Cloudflare Edit Código {response.status_code}: {response.text[:200]}"
 
     except Exception as e:
-        return None, f"Pollinations Edit Error: {str(e)}"
+        return None, f"Cloudflare Edit Error: {str(e)}"
 
 # ===================================
 # 🥈 Pollinations AI (Respaldo crear)
@@ -286,22 +286,8 @@ def editar_imagen():
                 'message': 'Describe cómo editar la imagen'
             }), 400
 
-        # PASO 1: Subir imagen a Imgbb
-        print("📤 Subiendo imagen a Imgbb...")
-        url_publica, error_upload = subir_a_imgbb(imagen_base64)
-
-        if not url_publica:
-            return jsonify({
-                'error': 'Error al subir imagen',
-                'message': error_upload,
-                'success': False
-            }), 500
-
-        print(f"✅ Imagen subida: {url_publica}")
-
-        # PASO 2: Editar con Pollinations Kontext
-        print("🎨 Editando con Pollinations Kontext...")
-        imagen_url, error = editar_con_pollinations(prompt, url_publica)
+        print("🎨 Editando imagen con Cloudflare Img2Img...")
+        imagen_url, error = editar_con_cloudflare(prompt, imagen_base64)
 
         if imagen_url:
             return jsonify({
@@ -334,9 +320,8 @@ def test():
         'status': 'ok',
         'endpoint': 'imagen',
         'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
-        'imgbb_configurado': bool(IMGBB_API_KEY),
         'pollinations_disponible': True,
-        'modelo_crear': 'Cloudflare Workers AI (FLUX schnell)',
-        'modelo_editar': 'Pollinations Kontext + Imgbb',
-        'message': '🎨 Sistema imagen con Cloudflare activo'
+        'modelo_crear': 'Cloudflare FLUX-1-schnell',
+        'modelo_editar': 'Cloudflare Stable Diffusion Img2Img',
+        'message': '🎨 Sistema imagen Cloudflare completo'
     })
