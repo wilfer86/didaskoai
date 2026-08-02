@@ -72,7 +72,9 @@ def crear_con_cloudflare(prompt, width, height):
 
         payload = {
             "prompt": prompt,
-            "steps": 4
+            "steps": 4,
+            "width": width,
+            "height": height
         }
 
         response = requests.post(
