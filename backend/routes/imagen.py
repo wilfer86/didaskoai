@@ -2,7 +2,7 @@
 # imagen.py - Endpoint Crear/Editar Imagen
 # ===================================
 # 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
-# 🎨 Editar: Cloudflare Workers AI (Stable Diffusion Img2Img)
+# 🎨 Editar: Cloudflare Workers AI (SD 1.5 Img2Img) + Pillow (respetar formato)
 # 🥈 Respaldo crear: Pollinations AI
 # ===================================
 
@@ -11,7 +11,9 @@ import base64
 import random
 import urllib.parse
 import requests
+from io import BytesIO
 from flask import Blueprint, request, jsonify
+from PIL import Image
 
 imagen_bp = Blueprint('imagen', __name__)
 
@@ -22,13 +24,11 @@ imagen_bp = Blueprint('imagen', __name__)
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
 
-# Cloudflare Workers AI - Crear (FLUX-1-schnell)
 CLOUDFLARE_FLUX_URL = (
     f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
     f"/ai/run/@cf/black-forest-labs/flux-1-schnell"
 ) if CLOUDFLARE_ACCOUNT_ID else None
 
-# Cloudflare Workers AI - Editar (Stable Diffusion Img2Img)
 CLOUDFLARE_EDIT_URL = (
     f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}"
     f"/ai/run/@cf/runwayml/stable-diffusion-v1-5-img2img"
@@ -52,6 +52,38 @@ def formato_a_dimensiones(formato):
     }
     return formatos.get(formato, (1024, 1024))
 
+def obtener_dimensiones_imagen(imagen_base64):
+    """
+    Obtiene el ancho y alto de una imagen en base64.
+    """
+    try:
+        if ',' in imagen_base64:
+            imagen_base64 = imagen_base64.split(',')[1]
+        imagen_bytes = base64.b64decode(imagen_base64)
+        imagen = Image.open(BytesIO(imagen_bytes))
+        return imagen.size  # (width, height)
+    except:
+        return (1024, 1024)
+
+def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
+    """
+    Redimensiona una imagen a las dimensiones deseadas manteniendo calidad.
+    """
+    try:
+        imagen = Image.open(BytesIO(imagen_bytes))
+        # Convertir a RGB si es necesario
+        if imagen.mode != 'RGB':
+            imagen = imagen.convert('RGB')
+        # Redimensionar con alta calidad
+        imagen_redimensionada = imagen.resize((ancho_destino, alto_destino), Image.LANCZOS)
+        # Convertir de vuelta a bytes
+        buffer = BytesIO()
+        imagen_redimensionada.save(buffer, format='PNG', quality=95)
+        return buffer.getvalue()
+    except Exception as e:
+        print(f"⚠️ Error redimensionando: {e}")
+        return imagen_bytes
+
 # ===================================
 # 🥇 Cloudflare Workers AI - FLUX schnell (CREAR)
 # ===================================
@@ -59,7 +91,6 @@ def formato_a_dimensiones(formato):
 def crear_con_cloudflare(prompt, width, height):
     """
     Genera imagen usando Cloudflare Workers AI (FLUX-1-schnell).
-    Gratis: 10,000 requests/día.
     """
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
         return None, "Cloudflare no configurado"
@@ -103,23 +134,27 @@ def crear_con_cloudflare(prompt, width, height):
         return None, f"Cloudflare Error: {str(e)}"
 
 # ===================================
-# 🎨 Cloudflare Workers AI - Img2Img (EDITAR)
+# 🎨 Cloudflare Workers AI - Img2Img (EDITAR) + Pillow redimensionar
 # ===================================
 
 def editar_con_cloudflare(prompt, imagen_base64):
     """
-    Edita imagen usando Cloudflare Stable Diffusion Img2Img.
-    Recibe la imagen en base64 y la transforma con el prompt.
+    Edita imagen con Cloudflare SD 1.5 Img2Img.
+    Después redimensiona con Pillow para respetar el aspecto ratio original.
     """
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
         return None, "Cloudflare no configurado"
 
     try:
+        # Obtener dimensiones originales de la imagen
+        ancho_original, alto_original = obtener_dimensiones_imagen(imagen_base64)
+        print(f"📐 Imagen original: {ancho_original}x{alto_original}")
+
         # Limpiar prefijo si existe
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
 
-        # Decodificar base64 a bytes → luego a array de enteros (formato que Cloudflare acepta)
+        # Decodificar base64 → bytes → lista de enteros (formato Cloudflare)
         imagen_bytes = base64.b64decode(imagen_base64)
         imagen_array = list(imagen_bytes)
 
@@ -131,7 +166,7 @@ def editar_con_cloudflare(prompt, imagen_base64):
         payload = {
             "prompt": prompt,
             "image": imagen_array,
-            "strength": 0.7,  # Qué tanto modificar (0=nada, 1=totalmente nueva)
+            "strength": 0.7,
             "num_steps": 20,
             "guidance": 7.5
         }
@@ -144,27 +179,34 @@ def editar_con_cloudflare(prompt, imagen_base64):
         )
 
         if response.status_code == 200:
-            # Este endpoint devuelve la imagen directamente como bytes binarios
             content_type = response.headers.get('Content-Type', '')
 
+            # Obtener los bytes de la imagen editada
+            imagen_editada_bytes = None
+
             if 'image' in content_type:
-                imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-                imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
-                return imagen_final, None
+                imagen_editada_bytes = response.content
             else:
-                # Puede devolver JSON con la imagen en base64
                 try:
                     data = response.json()
                     if data.get('success') and 'result' in data:
-                        imagen_b64 = data['result'].get('image', '')
-                        if imagen_b64:
-                            return f"data:image/png;base64,{imagen_b64}", None
-                    return None, f"Cloudflare Edit respuesta inesperada: {str(data)[:200]}"
+                        imagen_b64_edit = data['result'].get('image', '')
+                        if imagen_b64_edit:
+                            imagen_editada_bytes = base64.b64decode(imagen_b64_edit)
                 except:
-                    # Si no es JSON, probablemente son bytes de imagen
-                    imagen_editada_b64 = base64.b64encode(response.content).decode('utf-8')
-                    imagen_final = f"data:image/png;base64,{imagen_editada_b64}"
-                    return imagen_final, None
+                    imagen_editada_bytes = response.content
+
+            if not imagen_editada_bytes:
+                return None, "Cloudflare Edit: no devolvió imagen"
+
+            # 🎨 Redimensionar al tamaño original de la imagen que subió el usuario
+            print(f"🔧 Redimensionando a {ancho_original}x{alto_original}...")
+            imagen_final_bytes = redimensionar_imagen(imagen_editada_bytes, ancho_original, alto_original)
+
+            # Convertir a base64 para devolver
+            imagen_final_b64 = base64.b64encode(imagen_final_bytes).decode('utf-8')
+            imagen_final = f"data:image/png;base64,{imagen_final_b64}"
+            return imagen_final, None
         else:
             return None, f"Cloudflare Edit Código {response.status_code}: {response.text[:200]}"
 
@@ -324,6 +366,6 @@ def test():
         'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'pollinations_disponible': True,
         'modelo_crear': 'Cloudflare FLUX-1-schnell',
-        'modelo_editar': 'Cloudflare Stable Diffusion Img2Img',
-        'message': '🎨 Sistema imagen Cloudflare completo'
+        'modelo_editar': 'Cloudflare SD 1.5 Img2Img + Pillow resize',
+        'message': '🎨 Sistema imagen completo'
     })
