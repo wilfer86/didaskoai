@@ -1,19 +1,19 @@
 # ===================================
-# vision.py - Endpoint de Análisis de Fotos
+# vision.py - Endpoint de Análisis de Fotos V3.0
 # ===================================
-# Usa NVIDIA Vision (principal) + Gemini Vision (respaldo)
-# Resuelve tareas fotografiadas
+# NVIDIA Vision (principal) + Gemini Vision (respaldo)
+# 🆕 Guarda análisis en Supabase por usuario
 # ===================================
 
 import os
 import base64
 from io import BytesIO
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from openai import OpenAI
 import google.generativeai as genai
 from PIL import Image
+from supabase_client import guardar_chat, get_client
 
-# Crear Blueprint para las rutas de visión
 vision_bp = Blueprint('vision', __name__)
 
 # ===================================
@@ -39,7 +39,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # ===================================
-# Instrucción del sistema para análisis
+# Instrucción del sistema
 # ===================================
 
 VISION_INSTRUCTION = """
@@ -80,36 +80,60 @@ REGLAS:
 # ===================================
 
 def pil_a_base64(imagen_pil):
-    """Convierte imagen PIL a string base64 (JPEG)"""
     buffer = BytesIO()
     imagen_pil.save(buffer, format="JPEG", quality=85)
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+# ===================================
+# 🆕 Guardar análisis en Supabase
+# ===================================
+def guardar_analisis_vision(usuario_id, prompt, respuesta, imagen_url, modelo):
+    """Guarda el análisis de foto en Supabase."""
+    try:
+        # Guardar como chat con sección 'vision'
+        guardar_chat(
+            usuario_id=usuario_id,
+            seccion='vision',
+            mensaje=prompt,
+            respuesta=respuesta,
+            modelo=modelo
+        )
+        
+        # También guardar la imagen en tabla imagenes con tipo 'analizada'
+        client = get_client()
+        if client and imagen_url:
+            url_guardar = imagen_url
+            if imagen_url.startswith('data:image') and len(imagen_url) > 500000:
+                url_guardar = imagen_url[:500000] + '...[truncated]'
+            
+            client.table('imagenes').insert({
+                'usuario_id': usuario_id,
+                'url': url_guardar,
+                'prompt': prompt[:500],
+                'formato': 'original',
+                'tipo': 'analizada'
+            }).execute()
+        
+        print(f"✅ Análisis vision guardado en Supabase")
+    except Exception as e:
+        print(f"⚠️ No se guardó análisis: {e}")
 
 # ===================================
 # Análisis con NVIDIA
 # ===================================
 
 def analizar_con_nvidia(imagen_pil, prompt):
-    """Analiza imagen usando NVIDIA Vision"""
     imagen_b64 = pil_a_base64(imagen_pil)
 
     response = nvidia_client.chat.completions.create(
         model="nvidia/nemotron-nano-12b-v2-vl",
         messages=[
-            {
-                "role": "system",
-                "content": VISION_INSTRUCTION
-            },
+            {"role": "system", "content": VISION_INSTRUCTION},
             {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{imagen_b64}"
-                        }
-                    }
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{imagen_b64}"}}
                 ]
             }
         ],
@@ -123,7 +147,6 @@ def analizar_con_nvidia(imagen_pil, prompt):
 # ===================================
 
 def analizar_con_gemini(imagen_pil, prompt):
-    """Analiza imagen usando Gemini Vision"""
     model = genai.GenerativeModel(
         model_name='gemini-flash-latest',
         system_instruction=VISION_INSTRUCTION
@@ -132,14 +155,11 @@ def analizar_con_gemini(imagen_pil, prompt):
     return response.text
 
 # ===================================
-# Endpoint principal de análisis
+# Endpoint principal
 # ===================================
 
 @vision_bp.route('/analizar', methods=['POST'])
 def analizar_imagen():
-    """
-    Recibe una imagen y una descripción de qué hacer con ella.
-    """
     try:
         if not NVIDIA_API_KEY and not GEMINI_API_KEY:
             return jsonify({
@@ -149,52 +169,50 @@ def analizar_imagen():
 
         imagen_pil = None
         prompt = ""
+        imagen_base64_original = None
 
-        # OPCIÓN 1: Recibe archivo directo (form-data)
+        # OPCIÓN 1: archivo (form-data)
         if 'imagen' in request.files:
             archivo = request.files['imagen']
-
             if archivo.filename == '':
-                return jsonify({
-                    'error': 'No se seleccionó archivo',
-                    'message': 'Selecciona una imagen para analizar'
-                }), 400
+                return jsonify({'error': 'No se seleccionó archivo'}), 400
 
             imagen_pil = Image.open(archivo.stream)
             prompt = request.form.get('prompt', '').strip()
+            # Convertir a base64 para guardar
+            buffer = BytesIO()
+            imagen_pil.save(buffer, format="JPEG", quality=85)
+            imagen_base64_original = f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
 
-        # OPCIÓN 2: Recibe imagen en base64 (JSON)
+        # OPCIÓN 2: base64 (JSON)
         elif request.is_json:
             data = request.get_json()
             imagen_base64 = data.get('imagen_base64', '')
             prompt = data.get('prompt', '').strip()
 
             if not imagen_base64:
-                return jsonify({
-                    'error': 'Falta imagen',
-                    'message': 'Envía una imagen para analizar'
-                }), 400
+                return jsonify({'error': 'Falta imagen'}), 400
+
+            imagen_base64_original = imagen_base64
 
             if ',' in imagen_base64:
                 imagen_base64 = imagen_base64.split(',')[1]
 
             imagen_bytes = base64.b64decode(imagen_base64)
             imagen_pil = Image.open(BytesIO(imagen_bytes))
-
         else:
-            return jsonify({
-                'error': 'Formato inválido',
-                'message': 'Envía la imagen como archivo o base64'
-            }), 400
+            return jsonify({'error': 'Formato inválido'}), 400
 
         if not prompt:
             prompt = "Analiza esta imagen y ayúdame con lo que ves. Explica paso a paso."
 
-        # Convertir a RGB si es necesario
         if imagen_pil.mode != 'RGB':
             imagen_pil = imagen_pil.convert('RGB')
 
-        # Intentar con NVIDIA primero
+        # 🆕 Obtener usuario logueado
+        usuario_id = session.get('usuario_id')
+
+        # NVIDIA primero
         respuesta_texto = None
         modelo_usado = "none"
 
@@ -203,20 +221,29 @@ def analizar_imagen():
                 respuesta_texto = analizar_con_nvidia(imagen_pil, prompt)
                 modelo_usado = "nvidia"
             except Exception as e:
-                print(f"⚠️ NVIDIA Vision falló: {e} — usando Gemini como respaldo")
+                print(f"⚠️ NVIDIA Vision falló: {e} — usando Gemini")
 
-        # Si NVIDIA falla, usar Gemini
+        # Gemini como respaldo
         if not respuesta_texto and GEMINI_API_KEY:
             try:
                 respuesta_texto = analizar_con_gemini(imagen_pil, prompt)
                 modelo_usado = "gemini"
             except Exception as e:
-                print(f"❌ Gemini Vision también falló: {e}")
                 return jsonify({
                     'error': 'Error en ambos servicios',
                     'message': str(e),
                     'success': False
                 }), 500
+
+        # 🆕 Guardar en Supabase
+        if usuario_id and respuesta_texto:
+            guardar_analisis_vision(
+                usuario_id=usuario_id,
+                prompt=prompt,
+                respuesta=respuesta_texto,
+                imagen_url=imagen_base64_original,
+                modelo=modelo_usado
+            )
 
         return jsonify({
             'respuesta': respuesta_texto,
@@ -233,16 +260,81 @@ def analizar_imagen():
         }), 500
 
 # ===================================
+# 🆕 Endpoint: HISTORIAL de análisis
+# ===================================
+
+@vision_bp.route('/historial', methods=['GET'])
+def obtener_historial_vision():
+    """Devuelve los análisis de fotos del usuario."""
+    try:
+        usuario_id = session.get('usuario_id')
+        if not usuario_id:
+            return jsonify({'success': False, 'error': 'Sin sesión'}), 401
+
+        client = get_client()
+        limite = int(request.args.get('limite', 20))
+
+        # Obtener análisis (chats con sección='vision')
+        chats = client.table('chats').select('*').eq('usuario_id', usuario_id).eq('seccion', 'vision').order('fecha', desc=True).limit(limite).execute()
+
+        # Obtener imágenes analizadas correspondientes
+        imagenes = client.table('imagenes').select('*').eq('usuario_id', usuario_id).eq('tipo', 'analizada').order('fecha', desc=True).limit(limite).execute()
+
+        # Combinar por fecha (aproximada)
+        analisis = []
+        for chat in chats.data:
+            # Buscar imagen más cercana en tiempo
+            imagen_url = None
+            for img in imagenes.data:
+                if img['prompt'] == chat['mensaje_usuario'][:500]:
+                    imagen_url = img['url']
+                    break
+            
+            analisis.append({
+                'id': chat['id'],
+                'prompt': chat['mensaje_usuario'],
+                'respuesta': chat['respuesta_ia'],
+                'imagen_url': imagen_url,
+                'fecha': chat['fecha'],
+                'modelo': chat.get('modelo_usado')
+            })
+
+        return jsonify({
+            'success': True,
+            'total': len(analisis),
+            'analisis': analisis
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===================================
+# 🆕 Endpoint: ELIMINAR análisis
+# ===================================
+
+@vision_bp.route('/eliminar/<analisis_id>', methods=['DELETE'])
+def eliminar_analisis(analisis_id):
+    try:
+        usuario_id = session.get('usuario_id')
+        if not usuario_id:
+            return jsonify({'success': False, 'error': 'Sin sesión'}), 401
+
+        client = get_client()
+        client.table('chats').delete().eq('id', analisis_id).eq('usuario_id', usuario_id).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===================================
 # Endpoint de prueba
 # ===================================
 
 @vision_bp.route('/test', methods=['GET'])
 def test():
-    """Verifica que el endpoint de visión está funcionando"""
     return jsonify({
         'status': 'ok',
         'endpoint': 'vision',
         'nvidia_configurado': bool(NVIDIA_API_KEY),
         'gemini_configurado': bool(GEMINI_API_KEY),
-        'message': '🔍 Vision endpoint funcionando'
+        'usuario_logueado': session.get('usuario_id') is not None,
+        'message': '🔍 Vision endpoint V3.0'
     })
