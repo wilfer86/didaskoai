@@ -25,9 +25,18 @@ app = Flask(
     static_url_path=''
 )
 
+# 🔐 SECRET_KEY para sesiones (login/logout)
+app.secret_key = os.getenv('SECRET_KEY', 'didasko-ai-2026-super-secret-key-change-me')
+
 # Configurar CORS (permite conexión frontend-backend)
 allowed_origins = os.getenv('ALLOWED_ORIGINS', '*')
-CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
+CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
+
+# ===================================
+# 🗄️ Inicializar Supabase
+# ===================================
+from supabase_client import init_supabase
+init_supabase()
 
 # ===================================
 # Importar y registrar rutas (endpoints)
@@ -37,11 +46,13 @@ from routes.chat import chat_bp
 from routes.imagen import imagen_bp
 from routes.vision import vision_bp
 from routes.video import video_bp
+from routes.auth import auth_bp  # 🆕 NUEVO
 
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 app.register_blueprint(imagen_bp, url_prefix='/api/imagen')
 app.register_blueprint(vision_bp, url_prefix='/api/vision')
 app.register_blueprint(video_bp, url_prefix='/api/video')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')  # 🆕 NUEVO
 
 # ===================================
 # Rutas para servir el frontend
@@ -67,7 +78,7 @@ def status():
     return jsonify({
         'status': 'ok',
         'app': 'Didasko AI',
-        'version': '1.0.0',
+        'version': '3.0.0',
         'message': '🦉 Servidor funcionando correctamente'
     })
 
@@ -109,7 +120,7 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     print("=" * 50)
-    print("🦉 DIDASKO AI - Servidor iniciado")
+    print("🦉 DIDASKO AI V3.0 - Servidor iniciado")
     print(f"📍 Puerto: {port}")
     print(f"🔧 Modo: {'Desarrollo' if debug else 'Producción'}")
     print(f"🌐 URL local: http://localhost:{port}")
