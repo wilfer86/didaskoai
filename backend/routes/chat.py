@@ -1,15 +1,15 @@
 # ===================================
-# chat.py - Endpoint del Chat
+# chat.py - Endpoint del Chat V3.0
 # ===================================
 # Maneja las conversaciones con NVIDIA (principal) y Gemini (respaldo)
-# Detecta nivel educativo automáticamente
-# Mantiene memoria de la conversación
+# 🆕 Guarda historial en Supabase por usuario
 # ===================================
 
 import os
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from openai import OpenAI
 import google.generativeai as genai
+from supabase_client import guardar_chat, obtener_historial, eliminar_chat
 
 # Crear Blueprint para las rutas del chat
 chat_bp = Blueprint('chat', __name__)
@@ -73,7 +73,7 @@ Cuando alguien te pregunte quién eres, presenta como:
 """
 
 # ===================================
-# Almacén de conversaciones (memoria)
+# Almacén de conversaciones en memoria (para sesión activa)
 # ===================================
 conversations = {}
 
@@ -90,7 +90,6 @@ def generar_respuesta(mensaje, historial):
     # --- NVIDIA (principal) ---
     if nvidia_client:
         try:
-            # Construir mensajes con historial
             messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
             for item in historial:
                 messages.append(item)
@@ -124,6 +123,31 @@ def generar_respuesta(mensaje, historial):
     return "🦉 No hay servicio disponible en este momento. Intenta más tarde.", "none"
 
 # ===================================
+# 🆕 Cargar historial desde Supabase al iniciar sesión
+# ===================================
+def cargar_historial_supabase(usuario_id, session_id):
+    """Carga los últimos 10 mensajes de Supabase a memoria."""
+    if session_id in conversations and len(conversations[session_id]) > 0:
+        return  # Ya tiene historial en memoria
+    
+    try:
+        chats_previos = obtener_historial(usuario_id, limite=10)
+        # Ordenar de más antiguo a más reciente
+        chats_previos = list(reversed(chats_previos))
+        
+        historial_memoria = []
+        for chat in chats_previos:
+            if chat.get('seccion') == 'chat':
+                historial_memoria.append({"role": "user", "content": chat['mensaje_usuario']})
+                historial_memoria.append({"role": "assistant", "content": chat['respuesta_ia']})
+        
+        conversations[session_id] = historial_memoria
+        print(f"✅ Historial cargado: {len(historial_memoria)} mensajes")
+    except Exception as e:
+        print(f"⚠️ Error cargando historial: {e}")
+        conversations[session_id] = []
+
+# ===================================
 # Endpoint principal del chat
 # ===================================
 
@@ -153,6 +177,13 @@ def enviar_mensaje():
                 'message': 'El mensaje no puede estar vacío'
             }), 400
 
+        # 🆕 Obtener usuario logueado
+        usuario_id = session.get('usuario_id')
+        
+        # 🆕 Cargar historial desde Supabase (primera vez)
+        if usuario_id:
+            cargar_historial_supabase(usuario_id, session_id)
+
         # Recuperar historial de conversación
         if session_id not in conversations:
             conversations[session_id] = []
@@ -162,13 +193,26 @@ def enviar_mensaje():
         # Generar respuesta
         respuesta_texto, modelo_usado = generar_respuesta(mensaje, historial)
 
-        # Guardar en historial
+        # Guardar en historial (memoria)
         conversations[session_id].append({"role": "user", "content": mensaje})
         conversations[session_id].append({"role": "assistant", "content": respuesta_texto})
 
         # Limitar historial a últimos 20 mensajes (10 intercambios)
         if len(conversations[session_id]) > 20:
             conversations[session_id] = conversations[session_id][-20:]
+
+        # 🆕 Guardar en Supabase (persistente)
+        if usuario_id:
+            try:
+                guardar_chat(
+                    usuario_id=usuario_id,
+                    seccion='chat',
+                    mensaje=mensaje,
+                    respuesta=respuesta_texto,
+                    modelo=modelo_usado
+                )
+            except Exception as e:
+                print(f"⚠️ No se pudo guardar en Supabase: {e}")
 
         return jsonify({
             'respuesta': respuesta_texto,
@@ -209,6 +253,62 @@ def reiniciar_conversacion():
         }), 500
 
 # ===================================
+# 🆕 Endpoint para obtener historial del usuario
+# ===================================
+
+@chat_bp.route('/historial', methods=['GET'])
+def obtener_historial_usuario():
+    """Devuelve el historial de chats del usuario logueado."""
+    try:
+        usuario_id = session.get('usuario_id')
+        
+        if not usuario_id:
+            return jsonify({
+                'success': False,
+                'error': 'No hay sesión activa'
+            }), 401
+        
+        limite = int(request.args.get('limite', 50))
+        historial = obtener_historial(usuario_id, limite=limite)
+        
+        return jsonify({
+            'success': True,
+            'total': len(historial),
+            'historial': historial
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ===================================
+# 🆕 Endpoint para eliminar un chat del historial
+# ===================================
+
+@chat_bp.route('/eliminar/<chat_id>', methods=['DELETE'])
+def eliminar_chat_historial(chat_id):
+    """Elimina un chat específico del historial del usuario."""
+    try:
+        usuario_id = session.get('usuario_id')
+        
+        if not usuario_id:
+            return jsonify({
+                'success': False,
+                'error': 'No hay sesión activa'
+            }), 401
+        
+        resultado = eliminar_chat(chat_id, usuario_id)
+        return jsonify(resultado)
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# ===================================
 # Endpoint de prueba
 # ===================================
 
@@ -220,5 +320,6 @@ def test():
         'nvidia_configurado': bool(NVIDIA_API_KEY),
         'gemini_configurado': bool(GEMINI_API_KEY),
         'sesiones_activas': len(conversations),
-        'message': '🦉 Chat endpoint funcionando'
+        'usuario_logueado': session.get('usuario_id') is not None,
+        'message': '🦉 Chat endpoint V3.0 funcionando'
     })
