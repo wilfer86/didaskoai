@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Iniciar sesión - Didasko AI 🦉</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="assets/logo/favicon_io/favicon.ico">
+    <link rel="manifest" href="pwa/manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body class="login-body">
+
+    <!-- 🌌 Fondo animado -->
+    <div class="login-fondo"></div>
+
+    <!-- 🎯 Contenedor principal -->
+    <div class="login-container">
+
+        <!-- 🦉 Logo y título -->
+        <div class="login-header">
+            <img src="assets/logo/buho-columna.png" class="login-logo" alt="Didasko AI">
+            <h1 class="login-titulo">Didasko AI</h1>
+            <p class="login-subtitulo">Tu tutor con IA 🦉</p>
+        </div>
+
+        <!-- 🔄 Toggle Login/Registro -->
+        <div class="login-toggle">
+            <button class="toggle-btn active" onclick="mostrarFormulario('login')" id="btn-login">
+                🔐 Iniciar sesión
+            </button>
+            <button class="toggle-btn" onclick="mostrarFormulario('registro')" id="btn-registro">
+                ✨ Crear cuenta
+            </button>
+        </div>
+
+        <!-- 📝 Formulario de LOGIN -->
+        <form id="form-login" class="login-form active" onsubmit="hacerLogin(event)">
+            <div class="input-group">
+                <label>📧 Email</label>
+                <input type="email" id="login-email" placeholder="tucorreo@ejemplo.com" required>
+            </div>
+
+            <div class="input-group">
+                <label>🔒 Contraseña</label>
+                <input type="password" id="login-password" placeholder="Tu contraseña" required minlength="6">
+            </div>
+
+            <button type="submit" class="btn-principal" id="btn-hacer-login">
+                🚀 Entrar
+            </button>
+
+            <p class="login-mensaje" id="mensaje-login"></p>
+        </form>
+
+        <!-- 📝 Formulario de REGISTRO -->
+        <form id="form-registro" class="login-form" onsubmit="hacerRegistro(event)">
+            <div class="input-group">
+                <label>👤 Nombre</label>
+                <input type="text" id="registro-nombre" placeholder="¿Cómo te llamas?" required>
+            </div>
+
+            <div class="input-group">
+                <label>📧 Email</label>
+                <input type="email" id="registro-email" placeholder="tucorreo@ejemplo.com" required>
+            </div>
+
+            <div class="input-group">
+                <label>🔒 Contraseña</label>
+                <input type="password" id="registro-password" placeholder="Mínimo 6 caracteres" required minlength="6">
+            </div>
+
+            <button type="submit" class="btn-principal" id="btn-hacer-registro">
+                ✨ Crear mi cuenta
+            </button>
+
+            <p class="login-mensaje" id="mensaje-registro"></p>
+        </form>
+
+        <!-- 🎓 Footer -->
+        <div class="login-footer">
+            <p>📚 <strong>Creado por Didasko AI</strong></p>
+            <p class="login-mini">Aprende, crea y descubre con IA 🦉</p>
+        </div>
+
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>
