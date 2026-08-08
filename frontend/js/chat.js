@@ -1,42 +1,85 @@
 // ==========================================
-// chat.js - Didasko AI
-// Manejo del chat con el búho
+// chat.js - Didasko AI V3.0
+// Chat con historial persistente
 // ==========================================
 
-// Enviar mensaje al backend
+let historialCargado = false;
+
+// ==========================================
+// 🔄 Cargar historial visual al abrir chat
+// ==========================================
+async function cargarHistorialVisual() {
+    if (historialCargado) return;
+
+    const mensajesDiv = document.getElementById('chat-mensajes');
+    if (!mensajesDiv) return;
+
+    try {
+        const response = await fetch('/api/chat/historial?limite=20', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (data.success && data.historial && data.historial.length > 0) {
+            // Ordenar de más antiguo a más reciente
+            const historial = data.historial.reverse();
+
+            historial.forEach(chat => {
+                if (chat.seccion === 'chat') {
+                    agregarMensajeUsuario(chat.mensaje_usuario, false);
+                    agregarMensajeBuho(chat.respuesta_ia, false);
+                }
+            });
+
+            // Mensaje de bienvenida al retomar
+            if (historial.length > 0) {
+                const divInfo = document.createElement('div');
+                divInfo.className = 'mensaje-info-historial';
+                divInfo.style.cssText = 'text-align:center; padding:10px; margin:10px 0; background:rgba(212,175,55,0.1); border-radius:8px; color:#d4af37; font-size:13px;';
+                divInfo.innerHTML = '🦉 <strong>Historial recuperado</strong> — Continúa donde lo dejaste';
+                mensajesDiv.appendChild(divInfo);
+            }
+
+            scrollAlFinal();
+        }
+
+        historialCargado = true;
+    } catch (error) {
+        if (CONFIG.DEBUG) console.warn('No se pudo cargar historial:', error);
+    }
+}
+
+// ==========================================
+// 📤 Enviar mensaje al backend
+// ==========================================
 async function enviarMensaje() {
     const input = document.getElementById('chat-input');
-    const mensajesDiv = document.getElementById('chat-mensajes');
     const mensaje = input.value.trim();
 
     if (!mensaje) return;
 
-    // Mostrar mensaje del usuario
     agregarMensajeUsuario(mensaje);
     input.value = '';
 
-    // Mostrar loader mientras carga
     const loaderId = mostrarLoader();
 
     try {
-        const response = await fetch(apiUrl('/api/chat/mensaje'), {
+        const response = await fetch('/api/chat/mensaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 mensaje: mensaje,
-                session_id: CONFIG.SESSION_ID
+                session_id: obtenerSessionUsuario()
             })
         });
 
         const data = await response.json();
-
-        // Quitar loader
         quitarLoader(loaderId);
 
         if (data.success) {
             agregarMensajeBuho(data.respuesta);
 
-            // Contar tarea para publicidad
             if (typeof contarTareaPublicidad === 'function') {
                 contarTareaPublicidad('chat');
             }
@@ -49,34 +92,47 @@ async function enviarMensaje() {
         if (CONFIG.DEBUG) console.error('Error chat:', error);
     }
 
-    // Scroll al final
     scrollAlFinal();
 }
 
-// Agregar mensaje del usuario al chat
-function agregarMensajeUsuario(mensaje) {
+// ==========================================
+// 🔑 Obtener session_id ligado al usuario
+// ==========================================
+function obtenerSessionUsuario() {
+    const usuarioData = localStorage.getItem('didasko_usuario');
+    if (usuarioData) {
+        try {
+            const usuario = JSON.parse(usuarioData);
+            return 'user_' + usuario.id;
+        } catch (e) {
+            return 'default';
+        }
+    }
+    return 'default';
+}
+
+// ==========================================
+// 💬 Agregar mensajes
+// ==========================================
+function agregarMensajeUsuario(mensaje, scroll = true) {
     const mensajesDiv = document.getElementById('chat-mensajes');
     const div = document.createElement('div');
     div.className = 'mensaje-chat mensaje-usuario';
     div.textContent = mensaje;
     mensajesDiv.appendChild(div);
-    scrollAlFinal();
+    if (scroll) scrollAlFinal();
 }
 
-// Agregar mensaje del búho al chat
-function agregarMensajeBuho(mensaje) {
+function agregarMensajeBuho(mensaje, scroll = true) {
     const mensajesDiv = document.getElementById('chat-mensajes');
     const div = document.createElement('div');
     div.className = 'mensaje-chat mensaje-buho';
     div.innerHTML = formatearTexto(mensaje);
     mensajesDiv.appendChild(div);
-    scrollAlFinal();
-
-    // 🧮 Renderizar fórmulas matemáticas con MathJax
+    if (scroll) scrollAlFinal();
     renderizarMatematicas(div);
 }
 
-// Agregar mensaje de error
 function agregarMensajeError(mensaje) {
     const mensajesDiv = document.getElementById('chat-mensajes');
     const div = document.createElement('div');
@@ -86,7 +142,9 @@ function agregarMensajeError(mensaje) {
     scrollAlFinal();
 }
 
-// Mostrar loader mientras espera respuesta
+// ==========================================
+// ⏳ Loader
+// ==========================================
 function mostrarLoader() {
     const mensajesDiv = document.getElementById('chat-mensajes');
     const id = 'loader-' + Date.now();
@@ -99,35 +157,30 @@ function mostrarLoader() {
     return id;
 }
 
-// Quitar loader
 function quitarLoader(id) {
     const loader = document.getElementById(id);
     if (loader) loader.remove();
 }
 
-// 🧮 Normalizar LaTeX (arregla el formato raro que a veces devuelve NVIDIA)
+// ==========================================
+// 🧮 Normalizar LaTeX
+// ==========================================
 function normalizarLatex(texto) {
-    // Convierte ((...)) -> $...$
     texto = texto.replace(/\(\((.+?)\)\)/g, '$$$1$$');
-    // Convierte (\frac...) o (\times...) sueltos -> $...$
     texto = texto.replace(/\((\\[a-zA-Z]+.*?)\)/g, '$$$1$$');
-    // Convierte \( ... \) -> $ ... $
     texto = texto.replace(/\\\((.+?)\\\)/g, '$$$1$$');
-    // Convierte \[ ... \] -> $$ ... $$
     texto = texto.replace(/\\\[(.+?)\\\]/g, '$$$$$1$$$$');
     return texto;
 }
 
-// Formatear texto usando marked.js (renderiza Markdown completo)
+// ==========================================
+// 📝 Formatear Markdown
+// ==========================================
 function formatearTexto(texto) {
-    // Normalizar LaTeX primero
     texto = normalizarLatex(texto);
 
     if (typeof marked !== 'undefined') {
-        marked.setOptions({
-            breaks: true,
-            gfm: true
-        });
+        marked.setOptions({ breaks: true, gfm: true });
         return marked.parse(texto);
     } else {
         return texto
@@ -140,7 +193,9 @@ function formatearTexto(texto) {
     }
 }
 
-// 🧮 Renderizar fórmulas matemáticas con MathJax
+// ==========================================
+// 🧮 Renderizar MathJax
+// ==========================================
 function renderizarMatematicas(elemento) {
     if (window.MathJax && window.MathJax.typesetPromise) {
         window.MathJax.typesetPromise([elemento]).catch(function(err) {
@@ -149,7 +204,9 @@ function renderizarMatematicas(elemento) {
     }
 }
 
-// Scroll automático al final
+// ==========================================
+// 📜 Scroll al final
+// ==========================================
 function scrollAlFinal() {
     const mensajesDiv = document.getElementById('chat-mensajes');
     if (mensajesDiv) {
@@ -157,8 +214,11 @@ function scrollAlFinal() {
     }
 }
 
-// Enviar mensaje con tecla Enter
+// ==========================================
+// 🚀 Al cargar la página
+// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
+    // Enter para enviar
     const input = document.getElementById('chat-input');
     if (input) {
         input.addEventListener('keypress', function(e) {
@@ -167,6 +227,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Cargar historial visual al inicio
+    setTimeout(cargarHistorialVisual, 1000);
 });
 
-if (CONFIG.DEBUG) console.log('💬 chat.js cargado');
+if (CONFIG.DEBUG) console.log('💬 chat.js V3.0 cargado');
