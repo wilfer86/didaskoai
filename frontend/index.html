@@ -12,63 +12,59 @@
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/animations.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- 🧮 MathJax - Renderizado de fórmulas matemáticas -->
-<script>
-  window.MathJax = {
-    tex: {
-      inlineMath: [['$', '$'], ['\\(', '\\)']],
-      displayMath: [['$$', '$$'], ['\\[', '\\]']],
-      processEscapes: true,
-      processEnvironments: true
-    },
-    options: {
-      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-      ignoreHtmlClass: 'tex2jax_ignore',
-      processHtmlClass: 'tex2jax_process'
-    },
-    svg: {
-      fontCache: 'global'
-    }
-  };
-</script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- 📊 MathJax - Renderizado de fórmulas matemáticas -->
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true,
+          processEnvironments: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+          ignoreHtmlClass: 'tex2jax_ignore',
+          processHtmlClass: 'tex2jax_process'
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-<!-- 🔐 PROTECCIÓN DE ACCESO - Verificar sesión ANTES de mostrar nada -->
-<script>
-(function() {
-    // Verificar si hay sesión antes de mostrar Didasko
-    fetch('/api/auth/me', { credentials: 'include' })
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success || !data.logueado) {
-                // No hay sesión → redirigir al login
-                window.location.href = '/login.html';
-            } else {
-                // Sí hay sesión → guardar datos y mostrar
-                localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
-                document.body.style.visibility = 'visible';
-            }
-        })
-        .catch(() => {
-            // Error de red → redirigir al login por seguridad
-            window.location.href = '/login.html';
-        });
-</script>
-<style>
-    body { visibility: hidden; }
-</style>
+    <!-- 🔐 PROTECCIÓN DE ACCESO - Verificar sesión ANTES de mostrar nada -->
+    <style>
+        body { visibility: hidden; }
+    </style>
+    <script>
+    (function() {
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.logueado) {
+                    window.location.replace('/login.html');
+                } else {
+                    localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
+                    document.body.style.visibility = 'visible';
+                }
+            })
+            .catch(() => {
+                window.location.replace('/login.html');
+            });
+    })();
+    </script>
 </head>
 <body>
 
-    <!-- 📂 PESTAÑAS TIPO FOLDER (Solo visibles en PC) -->
+    <!-- 📁 PESTAÑAS TIPO FOLDER (Solo visibles en PC) -->
     <nav class="tabs-web">
         <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
-        <button onclick="irA('imagen')" class="tab-link">🌌 Crear imagen</button>
+        <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
         <button onclick="irA('video')" class="tab-link">🎬 Crear video</button>
         <button onclick="irA('apoyar')" class="tab-link">💰 Apoyar el proyecto</button>
         <button onclick="cerrarSesionDidasko()" class="tab-link" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white;">🚪 Salir</button>
-    </nav>
     </nav>
 
     <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
@@ -98,6 +94,10 @@
                     <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
                     <span class="texto-boton">Apoyar</span>
                 </button>
+                <button onclick="cerrarSesionDidasko()" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                    <span class="texto-boton" style="color: white; font-size: 24px;">🚪</span>
+                    <span class="texto-boton" style="color: white;">Salir</span>
+                </button>
             </div>
         </div>
     </section>
@@ -116,84 +116,84 @@
         </div>
     </section>
 
-  <!-- 🎨 SECCIÓN IMAGEN -->
-<section id="imagen" class="pantalla">
-    <div class="header-seccion movil-only">
-        <button onclick="volverInicio()">⬅️</button>
-        <h2>🎨 Crear / Editar Imagen</h2>
-    </div>
+    <!-- 🖼️ SECCIÓN IMAGEN -->
+    <section id="imagen" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🖼️ Crear / Editar Imagen</h2>
+        </div>
 
-    <!-- Selector de Modo: Crear o Editar -->
-    <div class="modo-selector">
-        <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
-        <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">🎨 Editar</button>
-    </div>
+        <!-- Selector de Modo: Crear o Editar -->
+        <div class="modo-selector">
+            <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
+            <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">✏️ Editar</button>
+        </div>
 
-    <div id="imagen-resultado" class="contenido centrado"></div>
+        <div id="imagen-resultado" class="contenido centrado"></div>
 
-    <!-- Selector de formato (solo visible en modo Crear) -->
-    <div class="formato-selector" id="formato-selector">
-        <span class="formato-label">Formato:</span>
-        <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬜ 1:1</button>
-        <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
-        <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱 9:16</button>
-    </div>
+        <!-- Selector de formato (solo visible en modo Crear) -->
+        <div class="formato-selector" id="formato-selector">
+            <span class="formato-label">Formato:</span>
+            <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬛ 1:1</button>
+            <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
+            <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱  9:16</button>
+        </div>
 
-    <!-- Input oculto para subir imagen a editar -->
-    <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
+        <!-- Input oculto para subir imagen a editar -->
+        <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
 
-    <div class="input-area">
-        <!-- Botón de subir imagen (solo visible en modo Editar) -->
-        <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen a editar">📤</button>
+        <div class="input-area">
+            <!-- Botón de subir imagen (solo visible en modo Editar) -->
+            <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen">📁</button>
 
-        <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
-        <button onclick="procesarImagen()">➤</button>
-    </div>
-</section>
+            <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
+            <button onclick="procesarImagen()">➤</button>
+        </div>
+    </section>
 
     <!-- 🔍 SECCIÓN VISIÓN -->
-<section id="vision" class="pantalla">
-    <div class="header-seccion movil-only">
-        <button onclick="volverInicio()">⬅️</button>
-        <h2>🔍 Analizar Foto</h2>
-    </div>
-    <div id="vision-resultado" class="contenido centrado"></div>
-    <div class="input-area">
-        <!-- Input oculto: Galería -->
-        <input type="file" id="vision-file" accept="image/*" style="display:none">
-        <!-- Input oculto: Cámara directa -->
-        <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
-
-        <!-- Botón Galería 🖼️ -->
-        <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
-
-        <!-- Botón Cámara 📷 -->
-        <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📷</button>
-
-        <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
-        <button onclick="analizarImagen()">➤</button>
-    </div>
-</section>
-
-   <!-- 🎬 SECCIÓN VIDEO -->
-<section id="video" class="pantalla">
-    <div class="header-seccion movil-only">
-        <button onclick="volverInicio()">◄</button>
-        <h2>⚽ Profeta deportivo</h2>
-    </div>
-    <div class="contenido centrado video-proximamente">
-        <video autoplay loop playsinline controls class="video-buho-intro">
-            <source src="assets/buho-didasko.mp4" type="video/mp4">
-            Tu navegador no soporta video.
-        </video>
-        <div class="mensaje-proximamente">
-            <h2>🎬 ¡Próximamente!</h2>
-            <p>Muy pronto crearás <strong>grandes historias en video</strong> con la magia de Didasko AI.</p>
-            <p class="sub-mensaje">✨ Prepárate para la magia visual ✨</p>
+    <section id="vision" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🔍 Analizar Foto</h2>
         </div>
-    </div>
-</section>
-    
+        <div id="vision-resultado" class="contenido centrado"></div>
+        <div class="input-area">
+            <!-- Input oculto: Galería -->
+            <input type="file" id="vision-file" accept="image/*" style="display:none">
+            <!-- Input oculto: Cámara directa -->
+            <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
+
+            <!-- Botón Galería 🖼️ -->
+            <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
+
+            <!-- Botón Cámara 📸 -->
+            <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📸</button>
+
+            <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
+            <button onclick="analizarImagen()">➤</button>
+        </div>
+    </section>
+
+    <!-- 🎬 SECCIÓN VIDEO -->
+    <section id="video" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🎬 Profeta deportivo</h2>
+        </div>
+        <div class="contenido centrado video-proximamente">
+            <video autoplay loop playsinline controls class="video-buho-intro">
+                <source src="assets/buho-didasko.mp4" type="video/mp4">
+                Tu navegador no soporta video.
+            </video>
+            <div class="mensaje-proximamente">
+                <h2>🎬 ¡Próximamente!</h2>
+                <p>Muy pronto crearás <strong>grandes historias en video</strong> con la magia de Didasko AI.</p>
+                <p class="sub-mensaje">✨ Prepárate para la magia visual ✨</p>
+            </div>
+        </div>
+    </section>
+
     <!-- 💰 SECCIÓN APOYAR -->
     <section id="apoyar" class="pantalla">
         <div class="header-seccion movil-only">
@@ -222,7 +222,7 @@
     <script src="js/publicidad.js"></script>
     <script src="js/apoyar.js"></script>
     <script src="js/auth.js"></script>
-    
+
     <!-- 🚪 Función para cerrar sesión desde Didasko -->
     <script>
         function cerrarSesionDidasko() {
