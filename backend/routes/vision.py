@@ -1,8 +1,8 @@
 # ===================================
-# vision.py - Endpoint de Análisis de Fotos V3.0
+# vision.py - Endpoint de Análisis de Fotos V3.1
 # ===================================
 # NVIDIA Vision (principal) + Gemini Vision (respaldo)
-# 🆕 Guarda análisis en Supabase por usuario
+# 🆕 Sube imágenes a Supabase Storage
 # ===================================
 
 import os
@@ -12,7 +12,7 @@ from flask import Blueprint, request, jsonify, session
 from openai import OpenAI
 import google.generativeai as genai
 from PIL import Image
-from supabase_client import guardar_chat, get_client
+from supabase_client import guardar_chat, get_client, subir_imagen_storage
 
 vision_bp = Blueprint('vision', __name__)
 
@@ -87,10 +87,10 @@ def pil_a_base64(imagen_pil):
 # ===================================
 # 🆕 Guardar análisis en Supabase
 # ===================================
-def guardar_analisis_vision(usuario_id, prompt, respuesta, imagen_url, modelo):
-    """Guarda el análisis de foto en Supabase."""
+def guardar_analisis_vision(usuario_id, prompt, respuesta, imagen_url_publica, modelo):
+    """Guarda el análisis en chats + imagen ya subida."""
     try:
-        # Guardar como chat con sección 'vision'
+        # Guardar chat con sección 'vision'
         guardar_chat(
             usuario_id=usuario_id,
             seccion='vision',
@@ -99,22 +99,18 @@ def guardar_analisis_vision(usuario_id, prompt, respuesta, imagen_url, modelo):
             modelo=modelo
         )
         
-        # También guardar la imagen en tabla imagenes con tipo 'analizada'
+        # Guardar imagen en tabla imagenes con tipo 'analizada'
         client = get_client()
-        if client and imagen_url:
-            url_guardar = imagen_url
-            if imagen_url.startswith('data:image') and len(imagen_url) > 500000:
-                url_guardar = imagen_url[:500000] + '...[truncated]'
-            
+        if client and imagen_url_publica:
             client.table('imagenes').insert({
                 'usuario_id': usuario_id,
-                'url': url_guardar,
+                'url': imagen_url_publica,
                 'prompt': prompt[:500],
                 'formato': 'original',
                 'tipo': 'analizada'
             }).execute()
         
-        print(f"✅ Análisis vision guardado en Supabase")
+        print(f"✅ Análisis vision guardado")
     except Exception as e:
         print(f"⚠️ No se guardó análisis: {e}")
 
@@ -163,8 +159,7 @@ def analizar_imagen():
     try:
         if not NVIDIA_API_KEY and not GEMINI_API_KEY:
             return jsonify({
-                'error': 'Sin API configurada',
-                'message': 'Configura NVIDIA_API_KEY o GEMINI_API_KEY'
+                'error': 'Sin API configurada'
             }), 500
 
         imagen_pil = None
@@ -179,7 +174,6 @@ def analizar_imagen():
 
             imagen_pil = Image.open(archivo.stream)
             prompt = request.form.get('prompt', '').strip()
-            # Convertir a base64 para guardar
             buffer = BytesIO()
             imagen_pil.save(buffer, format="JPEG", quality=85)
             imagen_base64_original = f"data:image/jpeg;base64,{base64.b64encode(buffer.getvalue()).decode('utf-8')}"
@@ -209,7 +203,6 @@ def analizar_imagen():
         if imagen_pil.mode != 'RGB':
             imagen_pil = imagen_pil.convert('RGB')
 
-        # 🆕 Obtener usuario logueado
         usuario_id = session.get('usuario_id')
 
         # NVIDIA primero
@@ -235,13 +228,15 @@ def analizar_imagen():
                     'success': False
                 }), 500
 
-        # 🆕 Guardar en Supabase
+        # 🆕 Subir imagen a Storage y guardar análisis
         if usuario_id and respuesta_texto:
+            print("📤 Subiendo imagen analizada a Storage...")
+            url_publica = subir_imagen_storage(imagen_base64_original, usuario_id, 'analizada')
             guardar_analisis_vision(
                 usuario_id=usuario_id,
                 prompt=prompt,
                 respuesta=respuesta_texto,
-                imagen_url=imagen_base64_original,
+                imagen_url_publica=url_publica,
                 modelo=modelo_usado
             )
 
@@ -265,7 +260,6 @@ def analizar_imagen():
 
 @vision_bp.route('/historial', methods=['GET'])
 def obtener_historial_vision():
-    """Devuelve los análisis de fotos del usuario."""
     try:
         usuario_id = session.get('usuario_id')
         if not usuario_id:
@@ -280,10 +274,9 @@ def obtener_historial_vision():
         # Obtener imágenes analizadas correspondientes
         imagenes = client.table('imagenes').select('*').eq('usuario_id', usuario_id).eq('tipo', 'analizada').order('fecha', desc=True).limit(limite).execute()
 
-        # Combinar por fecha (aproximada)
+        # Combinar por prompt
         analisis = []
         for chat in chats.data:
-            # Buscar imagen más cercana en tiempo
             imagen_url = None
             for img in imagenes.data:
                 if img['prompt'] == chat['mensaje_usuario'][:500]:
@@ -336,5 +329,5 @@ def test():
         'nvidia_configurado': bool(NVIDIA_API_KEY),
         'gemini_configurado': bool(GEMINI_API_KEY),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'message': '🔍 Vision endpoint V3.0'
+        'message': '🔍 Vision endpoint V3.1 con Storage'
     })
