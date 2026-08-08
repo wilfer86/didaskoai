@@ -1,10 +1,10 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V3.0
+# imagen.py - Endpoint Crear/Editar Imagen V3.1
 # ===================================
 # 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
 # 🎨 Editar: Cloudflare Workers AI (SD 1.5 Img2Img) + Pillow
 # 🥈 Respaldo crear: Pollinations AI
-# 🆕 Guarda en Supabase por usuario
+# 🆕 Sube imágenes a Supabase Storage
 # ===================================
 
 import os
@@ -15,7 +15,7 @@ import requests
 from io import BytesIO
 from flask import Blueprint, request, jsonify, session
 from PIL import Image
-from supabase_client import get_client
+from supabase_client import get_client, subir_imagen_storage
 
 imagen_bp = Blueprint('imagen', __name__)
 
@@ -78,30 +78,25 @@ def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
         return imagen_bytes
 
 # ===================================
-# 🆕 Guardar imagen en Supabase
+# 🆕 Guardar registro en Supabase (URL corta)
 # ===================================
-def guardar_imagen_supabase(usuario_id, url, prompt, formato, tipo):
-    """Guarda registro de imagen en Supabase."""
+def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
+    """Guarda solo el registro (URL corta) en la tabla imagenes."""
     try:
         client = get_client()
         if not client:
             return
         
-        # Si es base64 muy largo, truncar para no saturar la DB
-        url_guardar = url
-        if url.startswith('data:image') and len(url) > 500000:
-            url_guardar = url[:500000] + '...[truncated]'
-        
         client.table('imagenes').insert({
             'usuario_id': usuario_id,
-            'url': url_guardar,
+            'url': url_publica,
             'prompt': prompt[:500],
             'formato': formato,
             'tipo': tipo
         }).execute()
-        print(f"✅ Imagen guardada en Supabase ({tipo})")
+        print(f"✅ Registro de imagen guardado en DB")
     except Exception as e:
-        print(f"⚠️ No se guardó imagen en Supabase: {e}")
+        print(f"⚠️ No se guardó registro: {e}")
 
 # ===================================
 # 🥇 Cloudflare Workers AI - FLUX schnell (CREAR)
@@ -222,7 +217,7 @@ def crear_imagen():
         data = request.get_json()
 
         if not data or 'prompt' not in data:
-            return jsonify({'error': 'Falta el prompt', 'message': 'Envía un "prompt"'}), 400
+            return jsonify({'error': 'Falta el prompt'}), 400
 
         prompt_original = data['prompt'].strip()
         if not prompt_original:
@@ -232,19 +227,22 @@ def crear_imagen():
         width, height = formato_a_dimensiones(formato)
         prompt_mejorado = mejorar_prompt(prompt_original)
 
-        # 🆕 Obtener usuario logueado
         usuario_id = session.get('usuario_id')
 
         # 🥇 Cloudflare
         print("🦉 Creando imagen con Cloudflare...")
         imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
+        
         if imagen_url:
-            # 🆕 Guardar en Supabase
+            # 🆕 Subir a Supabase Storage y obtener URL pública
+            url_publica = imagen_url
             if usuario_id:
-                guardar_imagen_supabase(usuario_id, imagen_url, prompt_original, formato, 'creada')
+                print("📤 Subiendo imagen a Storage...")
+                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
+                guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
 
             return jsonify({
-                'imagen_url': imagen_url,
+                'imagen_url': url_publica,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
                 'proveedor': 'Didasko AI',
@@ -258,11 +256,14 @@ def crear_imagen():
         print("🔄 Usando respaldo Pollinations...")
         imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
         if imagen_url:
+            url_publica = imagen_url
             if usuario_id:
-                guardar_imagen_supabase(usuario_id, imagen_url, prompt_original, formato, 'creada')
+                print("📤 Subiendo imagen a Storage...")
+                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
+                guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
 
             return jsonify({
-                'imagen_url': imagen_url,
+                'imagen_url': url_publica,
                 'prompt_usado': prompt_mejorado,
                 'prompt_original': prompt_original,
                 'proveedor': 'Didasko AI Respaldo',
@@ -303,12 +304,15 @@ def editar_imagen():
         imagen_url, error = editar_con_cloudflare(prompt, imagen_base64)
 
         if imagen_url:
-            # 🆕 Guardar en Supabase
+            # 🆕 Subir a Storage
+            url_publica = imagen_url
             if usuario_id:
-                guardar_imagen_supabase(usuario_id, imagen_url, prompt, 'editada', 'editada')
+                print("📤 Subiendo imagen editada a Storage...")
+                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'editada')
+                guardar_imagen_db(usuario_id, url_publica, prompt, 'editada', 'editada')
 
             return jsonify({
-                'imagen_url': imagen_url,
+                'imagen_url': url_publica,
                 'prompt_usado': prompt,
                 'proveedor': 'Didasko AI',
                 'success': True
@@ -325,7 +329,6 @@ def editar_imagen():
 
 @imagen_bp.route('/historial', methods=['GET'])
 def obtener_historial_imagenes():
-    """Devuelve las imágenes creadas por el usuario."""
     try:
         usuario_id = session.get('usuario_id')
         if not usuario_id:
@@ -372,5 +375,5 @@ def test():
         'endpoint': 'imagen',
         'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'message': '🎨 Sistema imagen V3.0'
+        'message': '🎨 Sistema imagen V3.1 con Storage'
     })
