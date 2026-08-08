@@ -32,6 +32,31 @@
   };
 </script>
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<!-- 🔐 PROTECCIÓN DE ACCESO - Verificar sesión ANTES de mostrar nada -->
+<script>
+(function() {
+    // Verificar si hay sesión antes de mostrar Didasko
+    fetch('/api/auth/me', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.logueado) {
+                // No hay sesión → redirigir al login
+                window.location.href = '/login.html';
+            } else {
+                // Sí hay sesión → guardar datos y mostrar
+                localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
+                document.body.style.visibility = 'visible';
+            }
+        })
+        .catch(() => {
+            // Error de red → redirigir al login por seguridad
+            window.location.href = '/login.html';
+        });
+</script>
+<style>
+    body { visibility: hidden; }
+</style>
 </head>
 <body>
 
@@ -42,6 +67,8 @@
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
         <button onclick="irA('video')" class="tab-link">🎬 Crear video</button>
         <button onclick="irA('apoyar')" class="tab-link">💰 Apoyar el proyecto</button>
+        <button onclick="cerrarSesionDidasko()" class="tab-link" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white;">🚪 Salir</button>
+    </nav>
     </nav>
 
     <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
