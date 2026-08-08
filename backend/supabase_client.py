@@ -1,12 +1,14 @@
 """
 ═══════════════════════════════════════════════
-DIDASKO AI - Cliente Supabase
+DIDASKO AI - Cliente Supabase V3.1
 ═══════════════════════════════════════════════
-Gestiona: usuarios, chats, historial, sesiones
+Gestiona: usuarios, chats, historial, sesiones, imágenes
 """
 
 import os
 import hashlib
+import base64
+import uuid
 from datetime import datetime
 from supabase import create_client, Client
 
@@ -15,6 +17,7 @@ from supabase import create_client, Client
 # ═══════════════════════════════════════════════
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+BUCKET_IMAGENES = "imagenes-didasko"
 
 # Cliente global de Supabase
 supabase: Client = None
@@ -37,7 +40,7 @@ def init_supabase():
 
 
 def get_client() -> Client:
-    """Devuelve el cliente de Supabase (para usar en otros módulos)."""
+    """Devuelve el cliente de Supabase."""
     global supabase
     if supabase is None:
         init_supabase()
@@ -48,32 +51,81 @@ def get_client() -> Client:
 # UTILIDADES DE SEGURIDAD
 # ═══════════════════════════════════════════════
 def hash_password(password: str) -> str:
-    """Hashea una contraseña con SHA-256 + salt."""
     salt = "didasko_ai_2026_secure"
     return hashlib.sha256((password + salt).encode()).hexdigest()
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verifica si una contraseña coincide con su hash."""
     return hash_password(password) == hashed
+
+
+# ═══════════════════════════════════════════════
+# 🆕 SUBIR IMAGEN A SUPABASE STORAGE
+# ═══════════════════════════════════════════════
+def subir_imagen_storage(imagen_base64_o_url: str, usuario_id: str, tipo: str = "creada") -> str:
+    """
+    Sube una imagen a Supabase Storage y devuelve la URL pública.
+    Acepta base64 o URL externa.
+    """
+    try:
+        client = get_client()
+        if not client:
+            return imagen_base64_o_url  # Devolver original si no hay cliente
+        
+        imagen_bytes = None
+        
+        # Caso 1: base64
+        if imagen_base64_o_url.startswith('data:image'):
+            # Extraer bytes del base64
+            base64_str = imagen_base64_o_url.split(',')[1] if ',' in imagen_base64_o_url else imagen_base64_o_url
+            imagen_bytes = base64.b64decode(base64_str)
+        
+        # Caso 2: URL externa (Pollinations)
+        elif imagen_base64_o_url.startswith('http'):
+            import requests
+            response = requests.get(imagen_base64_o_url, timeout=30)
+            if response.status_code == 200:
+                imagen_bytes = response.content
+            else:
+                return imagen_base64_o_url  # No se pudo descargar, devolver original
+        
+        if not imagen_bytes:
+            return imagen_base64_o_url
+        
+        # Generar nombre único
+        nombre_archivo = f"{usuario_id}/{tipo}_{uuid.uuid4().hex}.png"
+        
+        # Subir a Supabase Storage
+        client.storage.from_(BUCKET_IMAGENES).upload(
+            path=nombre_archivo,
+            file=imagen_bytes,
+            file_options={"content-type": "image/png", "upsert": "true"}
+        )
+        
+        # Obtener URL pública
+        url_publica = client.storage.from_(BUCKET_IMAGENES).get_public_url(nombre_archivo)
+        
+        print(f"✅ Imagen subida a Storage: {nombre_archivo}")
+        return url_publica
+        
+    except Exception as e:
+        print(f"⚠️ Error subiendo a Storage: {e}")
+        return imagen_base64_o_url  # Fallback: devolver original
 
 
 # ═══════════════════════════════════════════════
 # GESTIÓN DE USUARIOS
 # ═══════════════════════════════════════════════
 def registrar_usuario(email: str, password: str, nombre: str = None):
-    """Registra un nuevo usuario en Didasko."""
     try:
         client = get_client()
         if not client:
             return {"success": False, "error": "Supabase no conectado"}
         
-        # Verificar si el email ya existe
         existente = client.table("usuarios").select("id").eq("email", email).execute()
         if existente.data:
             return {"success": False, "error": "Este email ya está registrado"}
         
-        # Crear usuario
         nuevo_usuario = {
             "email": email,
             "password_hash": hash_password(password),
@@ -103,7 +155,6 @@ def registrar_usuario(email: str, password: str, nombre: str = None):
 
 
 def login_usuario(email: str, password: str):
-    """Valida credenciales y devuelve datos del usuario."""
     try:
         client = get_client()
         if not client:
@@ -119,7 +170,6 @@ def login_usuario(email: str, password: str):
         if not verify_password(password, usuario["password_hash"]):
             return {"success": False, "error": "Contraseña incorrecta"}
         
-        # Actualizar último acceso
         client.table("usuarios").update({
             "ultimo_acceso": datetime.now().isoformat()
         }).eq("id", usuario["id"]).execute()
@@ -141,7 +191,6 @@ def login_usuario(email: str, password: str):
 
 
 def obtener_usuario(usuario_id: str):
-    """Obtiene datos de un usuario por su ID."""
     try:
         client = get_client()
         resultado = client.table("usuarios").select("*").eq("id", usuario_id).execute()
@@ -154,10 +203,9 @@ def obtener_usuario(usuario_id: str):
 
 
 # ═══════════════════════════════════════════════
-# GESTIÓN DE CHATS (HISTORIAL)
+# GESTIÓN DE CHATS
 # ═══════════════════════════════════════════════
 def guardar_chat(usuario_id: str, seccion: str, mensaje: str, respuesta: str, modelo: str = "nemotron"):
-    """Guarda una conversación en el historial."""
     try:
         client = get_client()
         chat = {
@@ -175,7 +223,6 @@ def guardar_chat(usuario_id: str, seccion: str, mensaje: str, respuesta: str, mo
 
 
 def obtener_historial(usuario_id: str, limite: int = 50):
-    """Obtiene el historial de chats de un usuario."""
     try:
         client = get_client()
         resultado = client.table("chats").select("*").eq("usuario_id", usuario_id).order("fecha", desc=True).limit(limite).execute()
@@ -186,7 +233,6 @@ def obtener_historial(usuario_id: str, limite: int = 50):
 
 
 def eliminar_chat(chat_id: str, usuario_id: str):
-    """Elimina un chat del historial."""
     try:
         client = get_client()
         resultado = client.table("chats").delete().eq("id", chat_id).eq("usuario_id", usuario_id).execute()
@@ -199,7 +245,6 @@ def eliminar_chat(chat_id: str, usuario_id: str):
 # VERIFICAR ESTADO
 # ═══════════════════════════════════════════════
 def verificar_conexion():
-    """Verifica si Supabase está conectado y responde."""
     try:
         client = get_client()
         if client is None:
