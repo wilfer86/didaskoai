@@ -1,5 +1,5 @@
 # ===================================
-# app.py - Didasko AI
+# app.py - Didasko AI V3.2
 # Servidor principal Flask
 # ===================================
 
@@ -45,14 +45,14 @@ init_supabase()
 from routes.chat import chat_bp
 from routes.imagen import imagen_bp
 from routes.vision import vision_bp
-from routes.video import video_bp
-from routes.auth import auth_bp  # 🆕 NUEVO
+from routes.profeta import profeta_bp  # ⚽ PROFETA (reemplazó a video)
+from routes.auth import auth_bp
 
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 app.register_blueprint(imagen_bp, url_prefix='/api/imagen')
 app.register_blueprint(vision_bp, url_prefix='/api/vision')
-app.register_blueprint(video_bp, url_prefix='/api/video')
-app.register_blueprint(auth_bp, url_prefix='/api/auth')  # 🆕 NUEVO
+app.register_blueprint(profeta_bp, url_prefix='/api/profeta')  # ⚽ PROFETA
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 # ===================================
 # Rutas para servir el frontend
@@ -78,7 +78,7 @@ def status():
     return jsonify({
         'status': 'ok',
         'app': 'Didasko AI',
-        'version': '3.0.0',
+        'version': '3.2.0',
         'message': '🦉 Servidor funcionando correctamente'
     })
 
@@ -120,10 +120,11 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     print("=" * 50)
-    print("🦉 DIDASKO AI V3.0 - Servidor iniciado")
+    print("🦉 DIDASKO AI V3.2 - Servidor iniciado")
     print(f"📍 Puerto: {port}")
     print(f"🔧 Modo: {'Desarrollo' if debug else 'Producción'}")
     print(f"🌐 URL local: http://localhost:{port}")
+    print(f"⚽ Profeta Deportivo: ACTIVO")
     print("=" * 50)
     
     app.run(host='0.0.0.0', port=port, debug=debug)
