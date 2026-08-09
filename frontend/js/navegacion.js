@@ -1,6 +1,7 @@
 // ==========================================
-// navegacion.js - Didasko AI
+// navegacion.js - Didasko AI V3.2
 // Manejo de navegación entre secciones
+// + Auto-carga de Profeta Deportivo
 // ==========================================
 
 // Ir a una sección específica
@@ -29,6 +30,13 @@ function irA(seccion) {
 
     // Scroll al inicio
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // 🆕 AUTO-CARGA DE SECCIONES CON DATOS DINÁMICOS
+    if (seccion === 'profeta') {
+        if (typeof cargarProfeta === 'function') {
+            cargarProfeta();
+        }
+    }
 
     if (CONFIG.DEBUG) console.log('📍 Navegando a:', seccion);
 }
@@ -65,4 +73,4 @@ function seleccionarFormato(formato) {
 // Inicializar formato por defecto
 window.formatoImagenSeleccionado = '1:1';
 
-if (CONFIG.DEBUG) console.log('🧭 navegacion.js cargado');
+if (CONFIG.DEBUG) console.log('🧭 navegacion.js V3.2 cargado');
