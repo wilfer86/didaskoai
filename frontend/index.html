@@ -36,6 +36,44 @@
     <!-- 🔐 PROTECCIÓN DE ACCESO - Verificar sesión ANTES de mostrar nada -->
     <style>
         body { visibility: hidden; }
+        
+        /* 🎨 Botón Salir - Estilo web (pestaña) */
+        .tab-salir {
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+            color: white !important;
+            font-weight: 600 !important;
+        }
+        
+        .tab-salir:hover {
+            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4) !important;
+        }
+        
+        /* 🎨 Botón Salir - Estilo móvil (card) */
+        .btn-salir-movil {
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+            border: 3px solid #ff6b5c !important;
+        }
+        
+        .btn-salir-movil:hover {
+            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4) !important;
+        }
+        
+        .btn-salir-movil .icono-app {
+            width: 60px;
+            height: 60px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            background: transparent !important;
+        }
+        
+        .btn-salir-movil .texto-boton {
+            color: white !important;
+            font-weight: 700;
+        }
     </style>
     <script>
     (function() {
@@ -64,10 +102,7 @@
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
         <button onclick="irA('video')" class="tab-link">🎬 Crear video</button>
         <button onclick="irA('apoyar')" class="tab-link">💰 Apoyar el proyecto</button>
-                        <button onclick="cerrarSesionDidasko()" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-                    <span style="font-size: 40px; display: block; text-align: center; margin-bottom: 5px;">🚪</span>
-                    <span class="texto-boton" style="color: white;">Salir</span>
-                </button>
+        <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
     </nav>
 
     <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
@@ -97,9 +132,9 @@
                     <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
                     <span class="texto-boton">Apoyar</span>
                 </button>
-                <button onclick="cerrarSesionDidasko()" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-                    <span class="texto-boton" style="color: white; font-size: 24px;">🚪</span>
-                    <span class="texto-boton" style="color: white;">Salir</span>
+                <button onclick="cerrarSesionDidasko()" class="btn-salir-movil">
+                    <span class="icono-app">🚪</span>
+                    <span class="texto-boton">Salir</span>
                 </button>
             </div>
         </div>
