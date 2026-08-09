@@ -1579,46 +1579,119 @@
     color: var(--dorado);
 }
 
-/* ═══════ RESPONSIVE PROFETA MÓVIL ═══════ */
+/* ═══════ RESPONSIVE PROFETA MÓVIL (ARREGLADO) ═══════ */
 
 @media (max-width: 768px) {
+    
+    /* 📱 Sección Profeta permite scroll vertical */
+    #profeta {
+        overflow-y: auto !important;
+        height: 100vh !important;
+        display: none;
+    }
+    
+    #profeta.activa {
+        display: flex !important;
+        flex-direction: column;
+    }
+
+    /* 📱 Contenedor del Profeta - ajustado */
     #profeta-resultado {
-        padding: 10px;
+        width: 92%;
+        margin: 10px auto;
+        padding: 12px;
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+        flex: 1;
+    }
+
+    /* Header */
+    .profeta-header {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
     }
 
     .profeta-header h2 {
         font-size: 22px;
+        margin-bottom: 4px;
+    }
+
+    .profeta-fecha {
+        font-size: 12px;
     }
 
     .profeta-subtitulo {
         font-size: 15px;
+        margin: 12px 0 10px 0;
+    }
+
+    /* 🏆 Ligas Grid - 2 columnas fijas móvil */
+    .profeta-ligas {
+        width: 100%;
+        margin-bottom: 15px;
     }
 
     .ligas-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+        width: 100%;
     }
 
     .liga-card {
-        padding: 10px 6px;
-        min-height: 100px;
+        padding: 10px 5px !important;
+        min-height: 95px !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
     .liga-emoji {
-        font-size: 28px;
+        font-size: 26px !important;
     }
 
     .liga-nombre {
-        font-size: 11px;
+        font-size: 11px !important;
+        line-height: 1.1 !important;
     }
 
     .liga-pais {
-        font-size: 9px;
+        font-size: 9px !important;
+    }
+
+    /* 📅 Mensaje "sin partidos" a lo ancho */
+    .profeta-sin-partidos {
+        width: 100%;
+        padding: 20px 12px;
+        margin: 15px 0;
+    }
+
+    .profeta-sin-partidos p {
+        font-size: 13px;
+    }
+
+    .profeta-sin-partidos .sub-mensaje {
+        font-size: 11px;
+    }
+
+    /* ⚽ Partidos - 1 columna en móvil */
+    .profeta-partidos {
+        width: 100%;
     }
 
     .partidos-lista {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
         gap: 10px;
+        width: 100%;
+    }
+
+    .partido-card {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .partido-liga {
+        font-size: 10px;
+        margin-bottom: 6px;
     }
 
     .partido-equipos {
@@ -1632,6 +1705,7 @@
 
     .equipo p {
         font-size: 10px;
+        line-height: 1.1;
     }
 
     .resultado-marcador {
@@ -1643,8 +1717,54 @@
         padding: 5px 8px;
     }
 
+    .partido-info-extra {
+        font-size: 9px;
+    }
+
+    /* 🔙 Vista Liga completa */
+    .liga-header {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        gap: 8px;
+    }
+
+    .liga-header h2 {
+        font-size: 16px;
+    }
+
+    .btn-volver-liga {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
+
+    .liga-seccion {
+        margin-bottom: 20px;
+    }
+
+    /* 🔍 Detalle de partido */
+    .detalle-header {
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .detalle-header h2 {
+        font-size: 16px;
+    }
+
+    .detalle-poster {
+        max-height: 180px;
+    }
+
+    .detalle-partido {
+        padding: 12px;
+    }
+
+    .detalle-liga {
+        font-size: 13px;
+    }
+
     .detalle-equipos {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
         gap: 12px;
         text-align: center;
     }
@@ -1654,15 +1774,37 @@
         height: 60px;
     }
 
+    .detalle-equipo h3 {
+        font-size: 14px;
+    }
+
     .marcador-grande {
         font-size: 32px;
     }
 
-    .partido-video iframe {
-        height: 200px;
+    .hora-grande {
+        font-size: 20px;
     }
 
-    .liga-header h2 {
-        font-size: 18px;
+    .detalle-info p {
+        font-size: 11px;
+    }
+
+    .partido-video iframe {
+        height: 180px;
+    }
+
+    /* Footer */
+    .profeta-info-final {
+        margin-top: 20px;
+        padding-top: 12px;
+    }
+
+    .profeta-info-final p {
+        font-size: 11px;
+    }
+
+    .profeta-info-final .mini {
+        font-size: 9px;
     }
 }
