@@ -1,10 +1,11 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V3.1
+# imagen.py - Endpoint Crear/Editar Imagen V3.2
 # ===================================
 # 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
 # 🎨 Editar: Cloudflare Workers AI (SD 1.5 Img2Img) + Pillow
 # 🥈 Respaldo crear: Pollinations AI
 # 🆕 Sube imágenes a Supabase Storage
+# 🆕 Editar acepta URLs de Storage (no solo base64)
 # ===================================
 
 import os
@@ -58,6 +59,10 @@ def obtener_dimensiones_imagen(imagen_base64):
     try:
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
+        # Arreglar padding
+        missing_padding = len(imagen_base64) % 4
+        if missing_padding:
+            imagen_base64 += '=' * (4 - missing_padding)
         imagen_bytes = base64.b64decode(imagen_base64)
         imagen = Image.open(BytesIO(imagen_bytes))
         return imagen.size
@@ -76,6 +81,40 @@ def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
     except Exception as e:
         print(f"⚠️ Error redimensionando: {e}")
         return imagen_bytes
+
+# ===================================
+# 🆕 Función universal: obtener bytes de imagen
+# Acepta: base64, data:image, URL http/https
+# ===================================
+def obtener_bytes_imagen(imagen_input):
+    """
+    Convierte cualquier formato de entrada a bytes de imagen.
+    Devuelve: (imagen_bytes, error)
+    """
+    try:
+        # Caso 1: URL (http o https) - descargar
+        if imagen_input.startswith('http'):
+            print(f"📥 Descargando imagen desde URL...")
+            response = requests.get(imagen_input, timeout=30)
+            if response.status_code != 200:
+                return None, f"No se pudo descargar imagen: {response.status_code}"
+            return response.content, None
+        
+        # Caso 2: base64 con prefijo data:image
+        if imagen_input.startswith('data:image'):
+            imagen_input = imagen_input.split(',')[1]
+        
+        # Caso 3: base64 puro
+        # Arreglar padding
+        missing_padding = len(imagen_input) % 4
+        if missing_padding:
+            imagen_input += '=' * (4 - missing_padding)
+        
+        imagen_bytes = base64.b64decode(imagen_input)
+        return imagen_bytes, None
+        
+    except Exception as e:
+        return None, f"Error decodificando imagen: {str(e)}"
 
 # ===================================
 # 🆕 Guardar registro en Supabase (URL corta)
@@ -127,7 +166,7 @@ def crear_con_cloudflare(prompt, width, height):
                     return f"data:image/png;base64,{imagen_b64}", None
                 return None, f"Cloudflare: sin imagen"
             return None, f"Cloudflare respuesta inesperada"
-        return None, f"Cloudflare Código {response.status_code}"
+        return None, f"Cloudflare Código {response.status_code}: {response.text[:200]}"
     except Exception as e:
         return None, f"Cloudflare Error: {str(e)}"
 
@@ -135,18 +174,29 @@ def crear_con_cloudflare(prompt, width, height):
 # 🎨 Cloudflare Workers AI - Img2Img (EDITAR)
 # ===================================
 
-def editar_con_cloudflare(prompt, imagen_base64):
+def editar_con_cloudflare(prompt, imagen_input):
+    """
+    Edita imagen. Acepta base64, data:image o URL http/https.
+    """
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
         return None, "Cloudflare no configurado"
 
     try:
-        ancho_original, alto_original = obtener_dimensiones_imagen(imagen_base64)
+        # 🆕 Obtener bytes de imagen (funciona con URL o base64)
+        imagen_bytes, error = obtener_bytes_imagen(imagen_input)
+        if error:
+            return None, error
+        
+        # Obtener dimensiones originales
+        try:
+            imagen_pil = Image.open(BytesIO(imagen_bytes))
+            ancho_original, alto_original = imagen_pil.size
+        except:
+            ancho_original, alto_original = 1024, 1024
+        
         print(f"📐 Imagen original: {ancho_original}x{alto_original}")
 
-        if ',' in imagen_base64:
-            imagen_base64 = imagen_base64.split(',')[1]
-
-        imagen_bytes = base64.b64decode(imagen_base64)
+        # Convertir bytes a lista de enteros (formato Cloudflare)
         imagen_array = list(imagen_bytes)
 
         headers = {
@@ -185,7 +235,7 @@ def editar_con_cloudflare(prompt, imagen_base64):
             imagen_final_bytes = redimensionar_imagen(imagen_editada_bytes, ancho_original, alto_original)
             imagen_final_b64 = base64.b64encode(imagen_final_bytes).decode('utf-8')
             return f"data:image/png;base64,{imagen_final_b64}", None
-        return None, f"Cloudflare Edit Código {response.status_code}"
+        return None, f"Cloudflare Edit Código {response.status_code}: {response.text[:200]}"
     except Exception as e:
         return None, f"Cloudflare Edit Error: {str(e)}"
 
@@ -229,9 +279,14 @@ def crear_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 Cloudflare
+        # 🥇 Cloudflare (con 1 reintento si falla la primera vez)
         print("🦉 Creando imagen con Cloudflare...")
         imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
+        
+        # 🆕 Reintentar 1 vez si Cloudflare falla temporalmente
+        if not imagen_url and error_cf and "400" in str(error_cf):
+            print("🔄 Reintentando Cloudflare...")
+            imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
         
         if imagen_url:
             # 🆕 Subir a Supabase Storage y obtener URL pública
@@ -293,15 +348,23 @@ def editar_imagen():
             return jsonify({'error': 'Faltan datos'}), 400
 
         prompt = data['prompt'].strip()
-        imagen_base64 = data['imagen_base64']
+        imagen_input = data['imagen_base64']  # Puede ser base64 o URL
 
         if not prompt:
             return jsonify({'error': 'Prompt vacío'}), 400
 
+        if not imagen_input:
+            return jsonify({'error': 'Falta imagen'}), 400
+
         usuario_id = session.get('usuario_id')
 
         print("🎨 Editando imagen con Cloudflare Img2Img...")
-        imagen_url, error = editar_con_cloudflare(prompt, imagen_base64)
+        imagen_url, error = editar_con_cloudflare(prompt, imagen_input)
+
+        # 🆕 Reintentar 1 vez si falla
+        if not imagen_url and error and "400" in str(error):
+            print("🔄 Reintentando Cloudflare Edit...")
+            imagen_url, error = editar_con_cloudflare(prompt, imagen_input)
 
         if imagen_url:
             # 🆕 Subir a Storage
@@ -375,5 +438,5 @@ def test():
         'endpoint': 'imagen',
         'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'message': '🎨 Sistema imagen V3.1 con Storage'
+        'message': '🎨 Sistema imagen V3.2 con Storage y edición desde URL'
     })
