@@ -1,8 +1,9 @@
 # ===================================
-# vision.py - Endpoint de Análisis de Fotos V3.1
+# vision.py - Endpoint de Análisis de Fotos V3.2
 # ===================================
 # NVIDIA Vision (principal) + Gemini Vision (respaldo)
 # 🆕 Sube imágenes a Supabase Storage
+# 🔧 FIX: Historial vincula imagen correcta al análisis
 # ===================================
 
 import os
@@ -85,32 +86,45 @@ def pil_a_base64(imagen_pil):
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 # ===================================
-# 🆕 Guardar análisis en Supabase
+# 🆕 Guardar análisis en Supabase (con vínculo perfecto)
 # ===================================
 def guardar_analisis_vision(usuario_id, prompt, respuesta, imagen_url_publica, modelo):
-    """Guarda el análisis en chats + imagen ya subida."""
+    """Guarda el análisis con vínculo directo imagen ↔ chat."""
     try:
-        # Guardar chat con sección 'vision'
-        guardar_chat(
-            usuario_id=usuario_id,
-            seccion='vision',
-            mensaje=prompt,
-            respuesta=respuesta,
-            modelo=modelo
-        )
-        
-        # Guardar imagen en tabla imagenes con tipo 'analizada'
         client = get_client()
-        if client and imagen_url_publica:
-            client.table('imagenes').insert({
-                'usuario_id': usuario_id,
-                'url': imagen_url_publica,
-                'prompt': prompt[:500],
-                'formato': 'original',
-                'tipo': 'analizada'
-            }).execute()
+        if not client:
+            return
         
-        print(f"✅ Análisis vision guardado")
+        # 🔧 PRIMERO guardar la imagen y obtener su ID
+        imagen_id = None
+        if imagen_url_publica:
+            try:
+                res_img = client.table('imagenes').insert({
+                    'usuario_id': usuario_id,
+                    'url': imagen_url_publica,
+                    'prompt': prompt[:500],
+                    'formato': 'original',
+                    'tipo': 'analizada'
+                }).execute()
+                if res_img.data:
+                    imagen_id = res_img.data[0]['id']
+                    print(f"✅ Imagen guardada con ID: {imagen_id}")
+            except Exception as e:
+                print(f"⚠️ Error guardando imagen: {e}")
+        
+        # 🔧 LUEGO guardar el chat con referencia a la imagen
+        # Usamos modelo_usado para guardar el imagen_id (formato: "nvidia|IMG_ID")
+        modelo_con_ref = f"{modelo}|{imagen_id}" if imagen_id else modelo
+        
+        client.table('chats').insert({
+            'usuario_id': usuario_id,
+            'seccion': 'vision',
+            'mensaje_usuario': prompt,
+            'respuesta_ia': respuesta,
+            'modelo_usado': modelo_con_ref
+        }).execute()
+        
+        print(f"✅ Análisis vision guardado con vínculo")
     except Exception as e:
         print(f"⚠️ No se guardó análisis: {e}")
 
@@ -255,11 +269,12 @@ def analizar_imagen():
         }), 500
 
 # ===================================
-# 🆕 Endpoint: HISTORIAL de análisis
+# 🔧 Endpoint HISTORIAL - CORREGIDO
 # ===================================
 
 @vision_bp.route('/historial', methods=['GET'])
 def obtener_historial_vision():
+    """Devuelve los análisis de fotos con vínculo directo a imagen."""
     try:
         usuario_id = session.get('usuario_id')
         if not usuario_id:
@@ -268,20 +283,42 @@ def obtener_historial_vision():
         client = get_client()
         limite = int(request.args.get('limite', 20))
 
-        # Obtener análisis (chats con sección='vision')
+        # Obtener chats de vision
         chats = client.table('chats').select('*').eq('usuario_id', usuario_id).eq('seccion', 'vision').order('fecha', desc=True).limit(limite).execute()
 
-        # Obtener imágenes analizadas correspondientes
-        imagenes = client.table('imagenes').select('*').eq('usuario_id', usuario_id).eq('tipo', 'analizada').order('fecha', desc=True).limit(limite).execute()
-
-        # Combinar por prompt
         analisis = []
         for chat in chats.data:
             imagen_url = None
-            for img in imagenes.data:
-                if img['prompt'] == chat['mensaje_usuario'][:500]:
-                    imagen_url = img['url']
-                    break
+            modelo_raw = chat.get('modelo_usado', '')
+            
+            # 🔧 NUEVO: Extraer imagen_id del campo modelo_usado
+            if '|' in modelo_raw:
+                partes = modelo_raw.split('|')
+                modelo = partes[0]
+                imagen_id = partes[1] if len(partes) > 1 else None
+                
+                # Buscar la imagen exacta por ID
+                if imagen_id and imagen_id != 'None':
+                    try:
+                        img_res = client.table('imagenes').select('url').eq('id', imagen_id).execute()
+                        if img_res.data:
+                            imagen_url = img_res.data[0]['url']
+                    except:
+                        pass
+            else:
+                modelo = modelo_raw
+            
+            # 🔧 FALLBACK: Si no hay vínculo, buscar por prompt exacto (análisis viejos)
+            if not imagen_url:
+                try:
+                    prompt_completo = chat['mensaje_usuario'][:500]
+                    fecha_chat = chat['fecha']
+                    
+                    img_res = client.table('imagenes').select('url').eq('usuario_id', usuario_id).eq('tipo', 'analizada').eq('prompt', prompt_completo).order('fecha', desc=True).limit(1).execute()
+                    if img_res.data:
+                        imagen_url = img_res.data[0]['url']
+                except:
+                    pass
             
             analisis.append({
                 'id': chat['id'],
@@ -289,7 +326,7 @@ def obtener_historial_vision():
                 'respuesta': chat['respuesta_ia'],
                 'imagen_url': imagen_url,
                 'fecha': chat['fecha'],
-                'modelo': chat.get('modelo_usado')
+                'modelo': modelo
             })
 
         return jsonify({
@@ -312,6 +349,19 @@ def eliminar_analisis(analisis_id):
             return jsonify({'success': False, 'error': 'Sin sesión'}), 401
 
         client = get_client()
+        
+        # Obtener imagen_id del chat para eliminar también la imagen
+        chat_res = client.table('chats').select('modelo_usado').eq('id', analisis_id).execute()
+        if chat_res.data:
+            modelo_raw = chat_res.data[0].get('modelo_usado', '')
+            if '|' in modelo_raw:
+                imagen_id = modelo_raw.split('|')[1]
+                if imagen_id and imagen_id != 'None':
+                    try:
+                        client.table('imagenes').delete().eq('id', imagen_id).eq('usuario_id', usuario_id).execute()
+                    except:
+                        pass
+        
         client.table('chats').delete().eq('id', analisis_id).eq('usuario_id', usuario_id).execute()
         return jsonify({'success': True})
     except Exception as e:
@@ -329,5 +379,5 @@ def test():
         'nvidia_configurado': bool(NVIDIA_API_KEY),
         'gemini_configurado': bool(GEMINI_API_KEY),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'message': '🔍 Vision endpoint V3.1 con Storage'
+        'message': '🔍 Vision endpoint V3.2 - vínculo directo imagen ↔ chat'
     })
