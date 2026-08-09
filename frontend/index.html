@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/animations.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- 📊 MathJax - Renderizado de fórmulas matemáticas -->
     <script>
       window.MathJax = {
         tex: {
@@ -26,18 +25,14 @@
           ignoreHtmlClass: 'tex2jax_ignore',
           processHtmlClass: 'tex2jax_process'
         },
-        svg: {
-          fontCache: 'global'
-        }
+        svg: { fontCache: 'global' }
       };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <!-- 🔐 PROTECCIÓN DE ACCESO - Verificar sesión ANTES de mostrar nada -->
     <style>
         body { visibility: hidden; }
         
-        /* 🎨 Botón Salir - Estilo web (pestaña) */
         .tab-salir {
             background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
             color: white !important;
@@ -49,7 +44,6 @@
             box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4) !important;
         }
         
-        /* 🎨 Botón Salir - Estilo móvil (card) */
         .btn-salir-movil {
             background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
             border: 3px solid #ff6b5c !important;
@@ -100,7 +94,7 @@
         <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
         <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
-        <button onclick="irA('video')" class="tab-link">🎬 Crear video</button>
+        <button onclick="irA('profeta')" class="tab-link">⚽ Profeta Deportivo</button>
         <button onclick="irA('apoyar')" class="tab-link">💰 Apoyar el proyecto</button>
         <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
     </nav>
@@ -124,9 +118,9 @@
                     <img src="assets/iconos-app/icono-vision.png" class="icono-app">
                     <span class="texto-boton">Analizar Foto</span>
                 </button>
-                <button onclick="irA('video')">
-                    <img src="assets/iconos-app/icono-video.png" class="icono-app">
-                    <span class="texto-boton">Crear Video</span>
+                <button onclick="irA('profeta')">
+                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">⚽</span>
+                    <span class="texto-boton">Profeta Deportivo</span>
                 </button>
                 <button onclick="irA('apoyar')">
                     <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
@@ -161,7 +155,6 @@
             <h2>🖼️ Crear / Editar Imagen</h2>
         </div>
 
-        <!-- Selector de Modo: Crear o Editar -->
         <div class="modo-selector">
             <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
             <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">✏️ Editar</button>
@@ -169,7 +162,6 @@
 
         <div id="imagen-resultado" class="contenido centrado"></div>
 
-        <!-- Selector de formato (solo visible en modo Crear) -->
         <div class="formato-selector" id="formato-selector">
             <span class="formato-label">Formato:</span>
             <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬛ 1:1</button>
@@ -177,13 +169,10 @@
             <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱  9:16</button>
         </div>
 
-        <!-- Input oculto para subir imagen a editar -->
         <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
 
         <div class="input-area">
-            <!-- Botón de subir imagen (solo visible en modo Editar) -->
             <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen">📁</button>
-
             <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
             <button onclick="procesarImagen()">➤</button>
         </div>
@@ -197,39 +186,22 @@
         </div>
         <div id="vision-resultado" class="contenido centrado"></div>
         <div class="input-area">
-            <!-- Input oculto: Galería -->
             <input type="file" id="vision-file" accept="image/*" style="display:none">
-            <!-- Input oculto: Cámara directa -->
             <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
-
-            <!-- Botón Galería 🖼️ -->
             <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
-
-            <!-- Botón Cámara 📸 -->
             <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📸</button>
-
             <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
             <button onclick="analizarImagen()">➤</button>
         </div>
     </section>
 
-    <!-- 🎬 SECCIÓN VIDEO -->
-    <section id="video" class="pantalla">
+    <!-- ⚽ SECCIÓN PROFETA DEPORTIVO -->
+    <section id="profeta" class="pantalla">
         <div class="header-seccion movil-only">
             <button onclick="volverInicio()">⬅️</button>
-            <h2>🎬 Profeta deportivo</h2>
+            <h2>⚽ Profeta Deportivo</h2>
         </div>
-        <div class="contenido centrado video-proximamente">
-            <video autoplay loop playsinline controls class="video-buho-intro">
-                <source src="assets/buho-didasko.mp4" type="video/mp4">
-                Tu navegador no soporta video.
-            </video>
-            <div class="mensaje-proximamente">
-                <h2>🎬 ¡Próximamente!</h2>
-                <p>Muy pronto crearás <strong>grandes historias en video</strong> con la magia de Didasko AI.</p>
-                <p class="sub-mensaje">✨ Prepárate para la magia visual ✨</p>
-            </div>
-        </div>
+        <div id="profeta-resultado" class="contenido centrado"></div>
     </section>
 
     <!-- 💰 SECCIÓN APOYAR -->
@@ -256,12 +228,11 @@
     <script src="js/chat.js"></script>
     <script src="js/imagen.js"></script>
     <script src="js/vision.js"></script>
-    <script src="js/video.js"></script>
+    <script src="js/profeta.js"></script>
     <script src="js/publicidad.js"></script>
     <script src="js/apoyar.js"></script>
     <script src="js/auth.js"></script>
 
-    <!-- 🚪 Función para cerrar sesión desde Didasko -->
     <script>
         function cerrarSesionDidasko() {
             if (confirm('🤔 ¿Seguro que quieres cerrar sesión?')) {
