@@ -1,5 +1,5 @@
 /* ==========================================
-   responsive.css - Didasko AI
+   responsive.css - Didasko AI V3.2
    Control Web / App
    ========================================== */
 
@@ -289,8 +289,27 @@
         line-height: 1.1;
     }
 
-    .menu-principal button:last-child {
-        grid-column: 1 / 3;
+    /* 🚪 BOTÓN SALIR - No ocupa 2 columnas, va al lado de Apoyar */
+    .menu-principal .btn-salir-movil {
+        background: linear-gradient(145deg, #e74c3c, #c0392b) !important;
+        border: 2px solid #ff6b5c !important;
+        grid-column: auto !important;
+    }
+    
+    .menu-principal .btn-salir-movil .icono-app {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 50px !important;
+        background: transparent !important;
+        width: 72px;
+        height: 72px;
+    }
+    
+    .menu-principal .btn-salir-movil .texto-boton {
+        color: white !important;
+        font-weight: 700 !important;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
     }
 
     /* Contenido móvil */
