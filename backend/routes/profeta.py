@@ -28,61 +28,61 @@ LIGAS_PRIORITARIAS = {
         'id': 4480,
         'nombre': 'UEFA Champions League',
         'pais': 'Europa',
-        'banner': 'assets/fondos/champions.jpg'
+        'banner': 'assets/fondos/champions.jpeg'
     },
     'libertadores': {
         'id': 4482,
         'nombre': 'Copa Libertadores',
         'pais': 'Sudamérica',
-        'banner': 'assets/fondos/libertadores.jpg'
+        'banner': 'assets/fondos/libertadores.jpeg'
     },
     'bundesliga': {
         'id': 4331,
         'nombre': 'Bundesliga',
         'pais': 'Alemania',
-        'banner': 'assets/fondos/bundesliga.jpg'
+        'banner': 'assets/fondos/bundesliga.jpeg'
     },
     'laliga': {
         'id': 4335,
         'nombre': 'LaLiga',
         'pais': 'España',
-        'banner': 'assets/fondos/laliga.jpg'
+        'banner': 'assets/fondos/laliga.jpeg'
     },
     'ligue_1': {
         'id': 4334,
         'nombre': 'Ligue 1',
         'pais': 'Francia',
-        'banner': 'assets/fondos/ligue-1.jpg'
+        'banner': 'assets/fondos/ligue-1.jpeg'
     },
     'copa_colombia': {
         'id': 5183,
         'nombre': 'Copa BetPlay',
         'pais': 'Colombia',
-        'banner': 'assets/fondos/copa-colombia.jpg'
+        'banner': 'assets/fondos/copa-colombia.jpeg'
     },
     'premier': {
         'id': 4328,
         'nombre': 'Premier League',
         'pais': 'Inglaterra',
-        'banner': 'assets/fondos/premier.jpg'
+        'banner': 'assets/fondos/premier.jpeg'
     },
     'serie_a': {
         'id': 4332,
         'nombre': 'Serie A',
         'pais': 'Italia',
-        'banner': 'assets/fondos/serie-a.jpg'
+        'banner': 'assets/fondos/serie-a.jpeg'
     },
     'colombia_primera': {
         'id': 4497,
         'nombre': 'Liga BetPlay Dimayor',
         'pais': 'Colombia',
-        'banner': 'assets/fondos/colombia-primera.jpg'
+        'banner': 'assets/fondos/colombia-primera.jpeg'
     },
     'sudamericana': {
         'id': 4724,
         'nombre': 'Copa Sudamericana',
         'pais': 'Sudamérica',
-        'banner': 'assets/fondos/sudamericana.jpg'
+        'banner': 'assets/fondos/sudamericana.jpeg'
     },
 }
 
