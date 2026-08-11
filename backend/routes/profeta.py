@@ -1,9 +1,10 @@
 # ===================================
-# profeta.py - Profeta Deportivo V1.0
+# profeta.py - Profeta Deportivo V2.0
 # ===================================
 # Agente autónomo de predicciones deportivas
-# API: TheSportsDB (gratis, sin límite)
+# API: TheSportsDB (gratis)
 # Cache: Supabase para eficiencia
+# 🆕 V2.0: Banners de liga + múltiples partidos
 # ===================================
 
 import os
@@ -18,26 +19,71 @@ profeta_bp = Blueprint('profeta', __name__)
 # CONFIGURACIÓN
 # ===================================
 
-THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')  # Key pública gratis
+THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🌍 Ligas prioritarias
+# 🌍 Ligas prioritarias con banners
 LIGAS_PRIORITARIAS = {
-    # Colombia (prioridad máxima)
-    'colombia_primera': {'id': 4497, 'nombre': 'Liga BetPlay Dimayor', 'pais': 'Colombia', 'emoji': '🇨🇴'},
-    'copa_colombia': {'id': 5183, 'nombre': 'Copa BetPlay', 'pais': 'Colombia', 'emoji': '🇨🇴'},
-    
-    # Internacional
-    'champions': {'id': 4480, 'nombre': 'UEFA Champions League', 'pais': 'Europa', 'emoji': '🌍'},
-    'libertadores': {'id': 4482, 'nombre': 'Copa Libertadores', 'pais': 'Sudamérica', 'emoji': '🌎'},
-    'sudamericana': {'id': 4724, 'nombre': 'Copa Sudamericana', 'pais': 'Sudamérica', 'emoji': '🌎'},
-    
-    # Ligas europeas TOP
-    'premier': {'id': 4328, 'nombre': 'Premier League', 'pais': 'Inglaterra', 'emoji': '🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
-    'laliga': {'id': 4335, 'nombre': 'LaLiga', 'pais': 'España', 'emoji': '🇪🇸'},
-    'bundesliga': {'id': 4331, 'nombre': 'Bundesliga', 'pais': 'Alemania', 'emoji': '🇩🇪'},
-    'serie_a': {'id': 4332, 'nombre': 'Serie A', 'pais': 'Italia', 'emoji': '🇮🇹'},
-    'ligue_1': {'id': 4334, 'nombre': 'Ligue 1', 'pais': 'Francia', 'emoji': '🇫🇷'},
+    'champions': {
+        'id': 4480,
+        'nombre': 'UEFA Champions League',
+        'pais': 'Europa',
+        'banner': 'assets/fondos/champions.jpg'
+    },
+    'libertadores': {
+        'id': 4482,
+        'nombre': 'Copa Libertadores',
+        'pais': 'Sudamérica',
+        'banner': 'assets/fondos/libertadores.jpg'
+    },
+    'bundesliga': {
+        'id': 4331,
+        'nombre': 'Bundesliga',
+        'pais': 'Alemania',
+        'banner': 'assets/fondos/bundesliga.jpg'
+    },
+    'laliga': {
+        'id': 4335,
+        'nombre': 'LaLiga',
+        'pais': 'España',
+        'banner': 'assets/fondos/laliga.jpg'
+    },
+    'ligue_1': {
+        'id': 4334,
+        'nombre': 'Ligue 1',
+        'pais': 'Francia',
+        'banner': 'assets/fondos/ligue-1.jpg'
+    },
+    'copa_colombia': {
+        'id': 5183,
+        'nombre': 'Copa BetPlay',
+        'pais': 'Colombia',
+        'banner': 'assets/fondos/copa-colombia.jpg'
+    },
+    'premier': {
+        'id': 4328,
+        'nombre': 'Premier League',
+        'pais': 'Inglaterra',
+        'banner': 'assets/fondos/premier.jpg'
+    },
+    'serie_a': {
+        'id': 4332,
+        'nombre': 'Serie A',
+        'pais': 'Italia',
+        'banner': 'assets/fondos/serie-a.jpg'
+    },
+    'colombia_primera': {
+        'id': 4497,
+        'nombre': 'Liga BetPlay Dimayor',
+        'pais': 'Colombia',
+        'banner': 'assets/fondos/colombia-primera.jpg'
+    },
+    'sudamericana': {
+        'id': 4724,
+        'nombre': 'Copa Sudamericana',
+        'pais': 'Sudamérica',
+        'banner': 'assets/fondos/sudamericana.jpg'
+    },
 }
 
 # ===================================
@@ -63,18 +109,49 @@ def obtener_partidos_del_dia(fecha=None):
         return {'success': False, 'error': str(e)}
 
 
+def obtener_partidos_liga_multiples(liga_id, dias_atras=15, dias_adelante=15):
+    """
+    🆕 Obtiene MÚLTIPLES partidos de una liga usando loop de fechas.
+    Recorre X días para atrás y adelante para conseguir muchos partidos.
+    """
+    partidos_encontrados = []
+    hoy = datetime.now()
+    
+    # Recorrer días hacia atrás
+    for i in range(1, dias_atras + 1):
+        fecha = (hoy - timedelta(days=i)).strftime('%Y-%m-%d')
+        resultado = obtener_partidos_del_dia(fecha)
+        if resultado['success']:
+            for p in resultado['partidos']:
+                if str(p.get('idLeague', '')) == str(liga_id):
+                    partidos_encontrados.append(p)
+    
+    return partidos_encontrados
+
+
 def obtener_partidos_liga_pasados(liga_id):
-    """Obtiene los últimos partidos jugados de una liga."""
+    """Obtiene los últimos partidos jugados de una liga (método original + fallback)."""
     try:
+        # Intentar método original primero
         url = f"{THESPORTSDB_URL}/eventspastleague.php?id={liga_id}"
         response = requests.get(url, timeout=10)
         
+        partidos = []
         if response.status_code == 200:
             data = response.json()
-            eventos = data.get('events', []) or []
-            return {'success': True, 'partidos': eventos, 'total': len(eventos)}
+            partidos = data.get('events', []) or []
         
-        return {'success': False, 'error': f'Código {response.status_code}'}
+        # 🆕 Si trae pocos, complementar con búsqueda por fechas
+        if len(partidos) < 5:
+            adicionales = obtener_partidos_liga_multiples(liga_id, dias_atras=15, dias_adelante=0)
+            # Combinar sin duplicados
+            ids_existentes = {p.get('idEvent') for p in partidos}
+            for p in adicionales:
+                if p.get('idEvent') not in ids_existentes:
+                    partidos.append(p)
+                    ids_existentes.add(p.get('idEvent'))
+        
+        return {'success': True, 'partidos': partidos, 'total': len(partidos)}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
@@ -85,12 +162,24 @@ def obtener_partidos_liga_proximos(liga_id):
         url = f"{THESPORTSDB_URL}/eventsnextleague.php?id={liga_id}"
         response = requests.get(url, timeout=10)
         
+        partidos = []
         if response.status_code == 200:
             data = response.json()
-            eventos = data.get('events', []) or []
-            return {'success': True, 'partidos': eventos, 'total': len(eventos)}
+            partidos = data.get('events', []) or []
         
-        return {'success': False, 'error': f'Código {response.status_code}'}
+        # 🆕 Si trae pocos, complementar
+        if len(partidos) < 5:
+            hoy = datetime.now()
+            for i in range(1, 15):
+                fecha = (hoy + timedelta(days=i)).strftime('%Y-%m-%d')
+                resultado = obtener_partidos_del_dia(fecha)
+                if resultado['success']:
+                    for p in resultado['partidos']:
+                        if str(p.get('idLeague', '')) == str(liga_id):
+                            if p.get('idEvent') not in {x.get('idEvent') for x in partidos}:
+                                partidos.append(p)
+        
+        return {'success': True, 'partidos': partidos, 'total': len(partidos)}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
@@ -150,20 +239,16 @@ def guardar_partido_cache(partido_data):
             'estado': 'jugado' if partido_data.get('strStatus') == 'FT' else 'programado'
         }
         
-        # Agregar resultado si está disponible
         if partido_data.get('intHomeScore') is not None:
             partido['resultado_local'] = int(partido_data.get('intHomeScore', 0))
         if partido_data.get('intAwayScore') is not None:
             partido['resultado_visitante'] = int(partido_data.get('intAwayScore', 0))
         
-        # Upsert (insertar o actualizar)
         existente = client.table('partidos').select('id').eq('partido_id_externo', partido['partido_id_externo']).execute()
         
         if existente.data:
-            # Actualizar
             client.table('partidos').update(partido).eq('partido_id_externo', partido['partido_id_externo']).execute()
         else:
-            # Insertar
             client.table('partidos').insert(partido).execute()
         
         return True
@@ -185,14 +270,12 @@ def partidos_hoy():
         if not resultado['success']:
             return jsonify(resultado), 500
         
-        # Filtrar solo ligas prioritarias
         ids_prioritarios = [str(liga['id']) for liga in LIGAS_PRIORITARIAS.values()]
         partidos_filtrados = [
             p for p in resultado['partidos']
             if str(p.get('idLeague', '')) in ids_prioritarios
         ]
         
-        # Guardar en cache
         for partido in partidos_filtrados:
             guardar_partido_cache(partido)
         
@@ -266,7 +349,6 @@ def listar_ligas():
 @profeta_bp.route('/test', methods=['GET'])
 def test():
     """Endpoint de prueba."""
-    # Probar conexión con TheSportsDB
     try:
         response = requests.get(f"{THESPORTSDB_URL}/lookupteam.php?id=137617", timeout=5)
         api_ok = response.status_code == 200
@@ -279,5 +361,5 @@ def test():
         'thesportsdb_key': THESPORTSDB_KEY,
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
-        'message': '⚽ Profeta Deportivo V1.0'
+        'message': '⚽ Profeta Deportivo V2.0 - Banners + Multi-partidos'
     })
