@@ -464,17 +464,32 @@
    ⚽ PROFETA DEPORTIVO V3.3 - CON BANNERS
 ═══════════════════════════════════════════════ */
 
+/* Contenedor principal - FORZAR layout vertical */
 #profeta-resultado {
-    background: linear-gradient(135deg, #0a1929 0%, #1a3a5c 50%, #0a1929 100%);
+    background: linear-gradient(135deg, #0a1929 0%, #1a3a5c 50%, #0a1929 100%) !important;
     border: 3px solid var(--dorado);
     color: white;
+    width: 92% !important;
+    max-width: 900px !important;
+    height: auto !important;
+    max-height: 80vh !important;
     min-height: 55vh;
-    padding: 15px;
+    padding: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
 }
 
 #profeta-resultado * { box-sizing: border-box; }
+
+/* Todos los hijos directos ocupan 100% y se apilan */
+#profeta-resultado > * {
+    width: 100%;
+    flex-shrink: 0;
+}
 
 #profeta-resultado:empty::before {
     content: '⚽';
@@ -485,11 +500,13 @@
     margin-top: 80px;
 }
 
+/* Header del Profeta */
 .profeta-header {
     text-align: center;
     margin-bottom: 15px;
     padding-bottom: 12px;
     border-bottom: 2px solid rgba(212, 175, 55, 0.3);
+    order: 1;
 }
 
 .profeta-header h2 {
@@ -532,6 +549,7 @@
     border-radius: 12px;
     padding: 15px;
     margin-bottom: 20px;
+    order: 2;
 }
 
 .info-item {
@@ -560,29 +578,24 @@
     margin-top: 2px;
 }
 
-@media (max-width: 768px) {
-    .profeta-info-banner {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-}
-
-/* ═══════ LIGAS CON BANNERS (TIPO CARD HORIZONTAL) ═══════ */
+/* ═══════ LIGAS CON BANNERS (CARD HORIZONTAL) ═══════ */
 
 .profeta-ligas {
     margin-bottom: 20px;
     width: 100%;
+    order: 3;
 }
 
 .ligas-banners {
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px;
     width: 100%;
 }
 
 .liga-banner-card {
-    display: flex;
+    display: flex !important;
+    flex-direction: row !important;
     align-items: stretch;
     background: rgba(0, 0, 0, 0.4);
     border: 2px solid rgba(212, 175, 55, 0.4);
@@ -590,7 +603,8 @@
     overflow: hidden;
     cursor: pointer;
     transition: all 0.3s ease;
-    min-height: 80px;
+    min-height: 90px;
+    width: 100%;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -602,7 +616,9 @@
 
 .liga-banner-img {
     flex-shrink: 0;
-    width: 200px;
+    width: 35%;
+    max-width: 250px;
+    min-width: 140px;
     background: linear-gradient(135deg, #1a3a5c, #0a1929);
     display: flex;
     align-items: center;
@@ -630,6 +646,7 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    min-width: 0;
 }
 
 .liga-banner-info h4 {
@@ -638,6 +655,7 @@
     font-weight: bold;
     margin: 0 0 4px 0;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    line-height: 1.2;
 }
 
 .liga-banner-info p {
@@ -645,29 +663,6 @@
     font-size: 15px;
     margin: 0;
     opacity: 0.85;
-}
-
-/* Móvil: ajustar tamaños */
-@media (max-width: 768px) {
-    .liga-banner-card {
-        min-height: 70px;
-    }
-    
-    .liga-banner-img {
-        width: 130px;
-    }
-    
-    .liga-banner-info {
-        padding: 10px 12px;
-    }
-    
-    .liga-banner-info h4 {
-        font-size: 16px;
-    }
-    
-    .liga-banner-info p {
-        font-size: 12px;
-    }
 }
 
 /* ═══════ HEADER DE LIGA (con banner de fondo) ═══════ */
@@ -723,13 +718,6 @@
     box-shadow: 0 6px 15px rgba(212, 175, 55, 0.5);
 }
 
-@media (max-width: 768px) {
-    .liga-header-banner { min-height: 90px; }
-    .liga-header-overlay { padding: 15px; min-height: 90px; }
-    .liga-header-overlay h2 { font-size: 18px; }
-    .btn-volver-liga { padding: 6px 12px; font-size: 11px; }
-}
-
 /* ═══════ PARTIDOS ═══════ */
 
 .profeta-partidos, .profeta-partidos-hoy {
@@ -739,13 +727,9 @@
 
 .partidos-lista {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
     width: 100%;
-}
-
-@media (max-width: 768px) {
-    .partidos-lista { grid-template-columns: 1fr; }
 }
 
 .partido-card {
@@ -1001,29 +985,42 @@
 
 @media (max-width: 768px) {
     #profeta {
-        overflow-y: auto !important;
-        height: 100vh !important;
-    }
-    
-    #profeta.activa {
-        display: flex !important;
+        display: flex;
         flex-direction: column;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        height: 100vh !important;
     }
 
     #profeta-resultado {
-        width: 92%;
-        margin: 10px auto;
-        padding: 12px;
-        min-height: auto;
-        max-height: none;
-        overflow: visible;
-        flex: 1;
+        width: 94% !important;
+        margin: 10px auto !important;
+        padding: 15px !important;
+        max-height: none !important;
+        min-height: 80vh !important;
     }
 
     .profeta-header h2 { font-size: 20px; }
     .profeta-fecha { font-size: 12px; }
     .profeta-subtitulo { font-size: 15px; }
 
+    .profeta-info-banner {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .liga-banner-card { min-height: 75px; }
+    .liga-banner-img { width: 40% !important; max-width: 160px; min-width: 110px; }
+    .liga-banner-info { padding: 10px 12px; }
+    .liga-banner-info h4 { font-size: 15px; line-height: 1.1; }
+    .liga-banner-info p { font-size: 12px; }
+
+    .liga-header-banner { min-height: 90px; }
+    .liga-header-overlay { padding: 15px; min-height: 90px; }
+    .liga-header-overlay h2 { font-size: 18px; }
+    .btn-volver-liga { padding: 6px 12px; font-size: 11px; }
+
+    .partidos-lista { grid-template-columns: 1fr; }
     .partido-equipos { gap: 8px; }
     .equipo img { width: 40px; height: 40px; }
     .equipo p { font-size: 10px; }
