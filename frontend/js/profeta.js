@@ -1,6 +1,6 @@
 // ==========================================
-// profeta.js - Didasko AI V3.2
-// Profeta Deportivo ⚽
+// profeta.js - Didasko AI V3.3
+// Profeta Deportivo ⚽ con banners
 // ==========================================
 
 let ligaSeleccionada = null;
@@ -11,13 +11,12 @@ let profetaCargado = false;
 // ==========================================
 async function cargarProfeta() {
     if (profetaCargado) return;
-    
     mostrarPartidosHoy();
     profetaCargado = true;
 }
 
 // ==========================================
-// ⚽ Mostrar partidos del día
+// ⚽ Mostrar partidos del día + ligas
 // ==========================================
 async function mostrarPartidosHoy() {
     const contenedor = document.getElementById('profeta-resultado');
@@ -31,14 +30,12 @@ async function mostrarPartidosHoy() {
     `;
     
     try {
-        // Obtener partidos del día
-        const response = await fetch('/api/profeta/hoy', {
-            credentials: 'include'
-        });
-        const data = await response.json();
+        const [partidosRes, ligasRes] = await Promise.all([
+            fetch('/api/profeta/hoy', { credentials: 'include' }),
+            fetch('/api/profeta/ligas', { credentials: 'include' })
+        ]);
         
-        // Obtener ligas también
-        const ligasRes = await fetch('/api/profeta/ligas', { credentials: 'include' });
+        const data = await partidosRes.json();
         const ligasData = await ligasRes.json();
         
         renderizarProfeta(data, ligasData);
@@ -52,7 +49,7 @@ async function mostrarPartidosHoy() {
 }
 
 // ==========================================
-// 🎨 Renderizar Profeta con partidos + ligas
+// 🎨 Renderizar Profeta principal
 // ==========================================
 function renderizarProfeta(dataPartidos, dataLigas) {
     const contenedor = document.getElementById('profeta-resultado');
@@ -65,69 +62,76 @@ function renderizarProfeta(dataPartidos, dataLigas) {
         day: 'numeric'
     });
     
-    // HTML de ligas (grid)
+    // Estado de partidos hoy
+    let htmlPartidosHoy = '';
+    if (dataPartidos.success && dataPartidos.partidos && dataPartidos.partidos.length > 0) {
+        htmlPartidosHoy = `
+            <div class="profeta-partidos-hoy">
+                <h3 class="profeta-subtitulo">📅 Partidos de hoy</h3>
+                <div class="partidos-lista">
+                    ${dataPartidos.partidos.map(p => renderizarPartido(p)).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        htmlPartidosHoy = `
+            <div class="profeta-info-banner">
+                <div class="info-item">
+                    <span class="info-icono">📅</span>
+                    <div class="info-texto">
+                        <p><strong>No hay partidos de ligas prioritarias hoy</strong></p>
+                        <p class="mini">Selecciona una liga abajo</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icono">🦉</span>
+                    <div class="info-texto">
+                        <p><strong>Powered by Didasko AI</strong></p>
+                        <p class="mini">Predicciones inteligentes actualizadas cada día</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // HTML de ligas con banners
     let htmlLigas = '';
     if (dataLigas.success && dataLigas.ligas) {
         htmlLigas = `
             <div class="profeta-ligas">
-                <h3 class="profeta-subtitulo">🏆 Selecciona una liga</h3>
-                <div class="ligas-grid">
+                <div class="ligas-banners">
                     ${Object.entries(dataLigas.ligas).map(([key, liga]) => `
-                        <button class="liga-card" onclick="verLiga('${key}', '${liga.nombre}', '${liga.emoji}')">
-                            <span class="liga-emoji">${liga.emoji}</span>
-                            <span class="liga-nombre">${liga.nombre}</span>
-                            <span class="liga-pais">${liga.pais}</span>
-                        </button>
+                        <div class="liga-banner-card" onclick="verLiga('${key}', '${liga.nombre.replace(/'/g, "\\'")}', '${liga.banner}')">
+                            <div class="liga-banner-img">
+                                <img src="${liga.banner}" alt="${liga.nombre}" onerror="this.style.display='none'; this.parentElement.classList.add('sin-imagen');">
+                            </div>
+                            <div class="liga-banner-info">
+                                <h4>${liga.nombre}</h4>
+                                <p>${liga.pais}</p>
+                            </div>
+                        </div>
                     `).join('')}
                 </div>
             </div>
         `;
     }
     
-    // HTML de partidos de hoy
-    let htmlPartidos = '';
-    if (dataPartidos.success) {
-        if (dataPartidos.partidos && dataPartidos.partidos.length > 0) {
-            htmlPartidos = `
-                <div class="profeta-partidos">
-                    <h3 class="profeta-subtitulo">📅 Partidos importantes de hoy</h3>
-                    <div class="partidos-lista">
-                        ${dataPartidos.partidos.map(p => renderizarPartido(p)).join('')}
-                    </div>
-                </div>
-            `;
-        } else {
-            htmlPartidos = `
-                <div class="profeta-sin-partidos">
-                    <p>📅 <strong>No hay partidos de ligas prioritarias hoy</strong></p>
-                    <p class="sub-mensaje">Selecciona una liga arriba para ver partidos pasados o próximos</p>
-                </div>
-            `;
-        }
-    }
-    
-    // Renderizar todo
     contenedor.innerHTML = `
         <div class="profeta-header">
             <h2>⚽ Profeta Deportivo</h2>
             <p class="profeta-fecha">🗓️ ${fecha}</p>
         </div>
         
+        ${htmlPartidosHoy}
         ${htmlLigas}
-        ${htmlPartidos}
-        
-        <div class="profeta-info-final">
-            <p>🦉 <strong>Powered by Didasko AI</strong></p>
-            <p class="mini">Predicciones inteligentes actualizadas cada día</p>
-        </div>
     `;
 }
 
 // ==========================================
-// 🎨 Renderizar UN partido individual
+// 🎨 Renderizar UN partido
 // ==========================================
 function renderizarPartido(partido) {
-    const escudoLocal = partido.strHomeTeamBadge || partido.strThumb || 'assets/logo/buho-mascota.png';
+    const escudoLocal = partido.strHomeTeamBadge || 'assets/logo/buho-mascota.png';
     const escudoVisita = partido.strAwayTeamBadge || 'assets/logo/buho-mascota.png';
     const hora = partido.strTime ? partido.strTime.substring(0, 5) : '--:--';
     const estado = partido.strStatus === 'FT' ? '✅ Finalizado' : '⏰ Programado';
@@ -145,17 +149,13 @@ function renderizarPartido(partido) {
     
     return `
         <div class="partido-card" onclick="verDetallePartido('${partido.idEvent}')">
-            <div class="partido-liga">
-                🏆 ${partido.strLeague || 'Liga'}
-            </div>
+            <div class="partido-liga">🏆 ${partido.strLeague || 'Liga'}</div>
             <div class="partido-equipos">
                 <div class="equipo local">
                     <img src="${escudoLocal}" alt="${partido.strHomeTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
                     <p>${partido.strHomeTeam}</p>
                 </div>
-                
                 ${resultado}
-                
                 <div class="equipo visitante">
                     <img src="${escudoVisita}" alt="${partido.strAwayTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
                     <p>${partido.strAwayTeam}</p>
@@ -172,19 +172,18 @@ function renderizarPartido(partido) {
 // ==========================================
 // 🏆 Ver partidos de una liga
 // ==========================================
-async function verLiga(ligaKey, ligaNombre, ligaEmoji) {
+async function verLiga(ligaKey, ligaNombre, ligaBanner) {
     const contenedor = document.getElementById('profeta-resultado');
     ligaSeleccionada = ligaKey;
     
     contenedor.innerHTML = `
         <div class="profeta-loader">
             <span class="loader"></span>
-            <p>🦉 Cargando ${ligaEmoji} ${ligaNombre}...</p>
+            <p>🦉 Cargando ${ligaNombre}...</p>
         </div>
     `;
     
     try {
-        // Obtener partidos pasados y próximos en paralelo
         const [pasadosRes, proximosRes] = await Promise.all([
             fetch(`/api/profeta/liga/${ligaKey}/pasados`, { credentials: 'include' }),
             fetch(`/api/profeta/liga/${ligaKey}/proximos`, { credentials: 'include' })
@@ -193,12 +192,10 @@ async function verLiga(ligaKey, ligaNombre, ligaEmoji) {
         const pasados = await pasadosRes.json();
         const proximos = await proximosRes.json();
         
-        renderizarLigaCompleta(ligaNombre, ligaEmoji, pasados, proximos);
+        renderizarLigaCompleta(ligaNombre, ligaBanner, pasados, proximos);
     } catch (error) {
         contenedor.innerHTML = `
-            <div class="mensaje-error">
-                ❌ Error cargando liga: ${error.message}
-            </div>
+            <div class="mensaje-error">❌ Error: ${error.message}</div>
             <button onclick="volverAProfeta()" class="btn-otra">🔙 Volver</button>
         `;
     }
@@ -207,14 +204,14 @@ async function verLiga(ligaKey, ligaNombre, ligaEmoji) {
 // ==========================================
 // 🎨 Renderizar liga completa
 // ==========================================
-function renderizarLigaCompleta(nombre, emoji, pasados, proximos) {
+function renderizarLigaCompleta(nombre, banner, pasados, proximos) {
     const contenedor = document.getElementById('profeta-resultado');
     
-    let htmlProximos = '<p class="sub-mensaje">No hay próximos partidos programados</p>';
+    let htmlProximos = '<p class="sub-mensaje">No hay próximos partidos</p>';
     if (proximos.success && proximos.partidos && proximos.partidos.length > 0) {
         htmlProximos = `
             <div class="partidos-lista">
-                ${proximos.partidos.slice(0, 10).map(p => renderizarPartido(p)).join('')}
+                ${proximos.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}
             </div>
         `;
     }
@@ -223,15 +220,17 @@ function renderizarLigaCompleta(nombre, emoji, pasados, proximos) {
     if (pasados.success && pasados.partidos && pasados.partidos.length > 0) {
         htmlPasados = `
             <div class="partidos-lista">
-                ${pasados.partidos.slice(0, 10).map(p => renderizarPartido(p)).join('')}
+                ${pasados.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}
             </div>
         `;
     }
     
     contenedor.innerHTML = `
-        <div class="liga-header">
-            <button onclick="volverAProfeta()" class="btn-volver-liga">🔙 Volver</button>
-            <h2>${emoji} ${nombre}</h2>
+        <div class="liga-header-banner" style="background-image: url('${banner}');">
+            <div class="liga-header-overlay">
+                <button onclick="volverAProfeta()" class="btn-volver-liga">🔙 Volver</button>
+                <h2>${nombre}</h2>
+            </div>
         </div>
         
         <div class="liga-seccion">
@@ -272,16 +271,14 @@ async function verDetallePartido(eventoId) {
         }
     } catch (error) {
         contenedor.innerHTML = `
-            <div class="mensaje-error">
-                ❌ Error: ${error.message}
-            </div>
+            <div class="mensaje-error">❌ Error: ${error.message}</div>
             <button onclick="volverAProfeta()" class="btn-otra">🔙 Volver</button>
         `;
     }
 }
 
 // ==========================================
-// 🎨 Renderizar detalle de partido
+// 🎨 Renderizar detalle
 // ==========================================
 function renderizarDetallePartido(p) {
     const contenedor = document.getElementById('profeta-resultado');
@@ -361,4 +358,4 @@ function volverAProfeta() {
     profetaCargado = true;
 }
 
-if (CONFIG.DEBUG) console.log('⚽ profeta.js V1.0 cargado');
+if (CONFIG.DEBUG) console.log('⚽ profeta.js V3.3 cargado');
