@@ -1,13 +1,14 @@
 # ===================================
-# profeta.py - Profeta Deportivo V2.0
+# profeta.py - Profeta Deportivo V2.1
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
 # Cache: Supabase para eficiencia
-# 🆕 V2.0: Banners de liga + múltiples partidos
+# 🆕 V2.1: Sin error 429 + peticiones optimizadas
 # ===================================
 
 import os
+import time
 import requests
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session
@@ -87,7 +88,7 @@ LIGAS_PRIORITARIAS = {
 }
 
 # ===================================
-# FUNCIONES DE THESPORTSDB
+# FUNCIONES DE THESPORTSDB (OPTIMIZADAS)
 # ===================================
 
 def obtener_partidos_del_dia(fecha=None):
@@ -104,84 +105,56 @@ def obtener_partidos_del_dia(fecha=None):
             eventos = data.get('events', []) or []
             return {'success': True, 'partidos': eventos, 'total': len(eventos)}
         
+        if response.status_code == 429:
+            return {'success': False, 'error': 'Límite de API alcanzado. Intenta en 1 minuto.'}
+        
         return {'success': False, 'error': f'Código {response.status_code}'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
 
-def obtener_partidos_liga_multiples(liga_id, dias_atras=15, dias_adelante=15):
-    """
-    🆕 Obtiene MÚLTIPLES partidos de una liga usando loop de fechas.
-    Recorre X días para atrás y adelante para conseguir muchos partidos.
-    """
-    partidos_encontrados = []
-    hoy = datetime.now()
-    
-    # Recorrer días hacia atrás
-    for i in range(1, dias_atras + 1):
-        fecha = (hoy - timedelta(days=i)).strftime('%Y-%m-%d')
-        resultado = obtener_partidos_del_dia(fecha)
-        if resultado['success']:
-            for p in resultado['partidos']:
-                if str(p.get('idLeague', '')) == str(liga_id):
-                    partidos_encontrados.append(p)
-    
-    return partidos_encontrados
-
-
 def obtener_partidos_liga_pasados(liga_id):
-    """Obtiene los últimos partidos jugados de una liga (método original + fallback)."""
+    """
+    Obtiene los últimos partidos jugados de una liga.
+    ⚡ V2.1: Solo usa endpoint oficial, sin loops.
+    """
     try:
-        # Intentar método original primero
         url = f"{THESPORTSDB_URL}/eventspastleague.php?id={liga_id}"
         response = requests.get(url, timeout=10)
+        
+        if response.status_code == 429:
+            return {'success': False, 'error': 'Límite de API alcanzado. Intenta en 1 minuto.', 'partidos': [], 'total': 0}
         
         partidos = []
         if response.status_code == 200:
             data = response.json()
             partidos = data.get('events', []) or []
         
-        # 🆕 Si trae pocos, complementar con búsqueda por fechas
-        if len(partidos) < 5:
-            adicionales = obtener_partidos_liga_multiples(liga_id, dias_atras=15, dias_adelante=0)
-            # Combinar sin duplicados
-            ids_existentes = {p.get('idEvent') for p in partidos}
-            for p in adicionales:
-                if p.get('idEvent') not in ids_existentes:
-                    partidos.append(p)
-                    ids_existentes.add(p.get('idEvent'))
-        
         return {'success': True, 'partidos': partidos, 'total': len(partidos)}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': str(e), 'partidos': [], 'total': 0}
 
 
 def obtener_partidos_liga_proximos(liga_id):
-    """Obtiene los próximos partidos de una liga."""
+    """
+    Obtiene los próximos partidos de una liga.
+    ⚡ V2.1: Solo usa endpoint oficial, sin loops.
+    """
     try:
         url = f"{THESPORTSDB_URL}/eventsnextleague.php?id={liga_id}"
         response = requests.get(url, timeout=10)
         
+        if response.status_code == 429:
+            return {'success': False, 'error': 'Límite de API alcanzado. Intenta en 1 minuto.', 'partidos': [], 'total': 0}
+        
         partidos = []
         if response.status_code == 200:
             data = response.json()
             partidos = data.get('events', []) or []
         
-        # 🆕 Si trae pocos, complementar
-        if len(partidos) < 5:
-            hoy = datetime.now()
-            for i in range(1, 15):
-                fecha = (hoy + timedelta(days=i)).strftime('%Y-%m-%d')
-                resultado = obtener_partidos_del_dia(fecha)
-                if resultado['success']:
-                    for p in resultado['partidos']:
-                        if str(p.get('idLeague', '')) == str(liga_id):
-                            if p.get('idEvent') not in {x.get('idEvent') for x in partidos}:
-                                partidos.append(p)
-        
         return {'success': True, 'partidos': partidos, 'total': len(partidos)}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'error': str(e), 'partidos': [], 'total': 0}
 
 
 def obtener_detalles_partido(evento_id):
@@ -189,6 +162,9 @@ def obtener_detalles_partido(evento_id):
     try:
         url = f"{THESPORTSDB_URL}/lookupevent.php?id={evento_id}"
         response = requests.get(url, timeout=10)
+        
+        if response.status_code == 429:
+            return {'success': False, 'error': 'Límite de API alcanzado. Intenta en 1 minuto.'}
         
         if response.status_code == 200:
             data = response.json()
@@ -361,5 +337,5 @@ def test():
         'thesportsdb_key': THESPORTSDB_KEY,
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
-        'message': '⚽ Profeta Deportivo V2.0 - Banners + Multi-partidos'
+        'message': '⚽ Profeta Deportivo V2.1 - Optimizado sin 429'
     })
