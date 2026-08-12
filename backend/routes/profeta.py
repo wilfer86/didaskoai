@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.0
+# profeta.py - Profeta Deportivo V3.1
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
 # IA: NVIDIA Llama para predicciones
 # Cache: Supabase para eficiencia
-# 🆕 V3.0: Predicciones IA + Sistema VIP
+# 🆕 V3.1: Fix sesión (usuario_email)
 # ===================================
 
 import os
@@ -91,6 +91,14 @@ LIGAS_PRIORITARIAS = {
         'banner': 'assets/fondos/sudamericana.jpeg'
     },
 }
+
+# ===================================
+# 🔐 HELPER: Obtener email de sesión
+# ===================================
+
+def obtener_email_sesion():
+    """Obtiene el email del usuario logueado (compatible con auth.py)."""
+    return session.get('usuario_email')
 
 # ===================================
 # FUNCIONES DE THESPORTSDB (OPTIMIZADAS)
@@ -197,25 +205,17 @@ def obtener_ultimos_partidos_equipo(equipo_id):
 # ===================================
 
 def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
-    """
-    Genera una predicción usando NVIDIA Llama.
-    Recibe info del partido + últimos partidos de ambos equipos.
-    """
+    """Genera una predicción usando NVIDIA Llama."""
     if not NVIDIA_API_KEY:
-        return {
-            'success': False,
-            'error': 'NVIDIA API key no configurada'
-        }
+        return {'success': False, 'error': 'NVIDIA API key no configurada'}
     
     try:
-        # Construir contexto para la IA
         equipo_local = partido_info.get('strHomeTeam', 'Local')
         equipo_visitante = partido_info.get('strAwayTeam', 'Visitante')
         liga = partido_info.get('strLeague', 'Liga')
         fecha = partido_info.get('dateEvent', '')
         estadio = partido_info.get('strVenue', '')
         
-        # Resumen de forma reciente
         forma_local_txt = ""
         if forma_local.get('success') and forma_local.get('partidos'):
             for p in forma_local['partidos'][:5]:
@@ -228,7 +228,6 @@ def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
                 if p.get('intHomeScore') is not None:
                     forma_visitante_txt += f"- {p.get('strHomeTeam')} {p.get('intHomeScore')}-{p.get('intAwayScore')} {p.get('strAwayTeam')}\n"
         
-        # Prompt para la IA
         prompt = f"""Eres el Profeta Deportivo de Didasko AI, un experto analista de fútbol.
 
 PARTIDO A ANALIZAR:
@@ -279,9 +278,8 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
             data = response.json()
             texto = data['choices'][0]['message']['content']
             
-            # Extraer ganador y confianza del texto
-            ganador = equipo_local  # default
-            confianza = 60  # default
+            ganador = equipo_local
+            confianza = 60
             
             try:
                 if 'GANADOR PROBABLE' in texto:
@@ -308,16 +306,10 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
                 'ia_usada': 'nvidia'
             }
         else:
-            return {
-                'success': False,
-                'error': f'NVIDIA API error: {response.status_code}'
-            }
+            return {'success': False, 'error': f'NVIDIA API error: {response.status_code}'}
     
     except Exception as e:
-        return {
-            'success': False,
-            'error': f'Error generando predicción: {str(e)}'
-        }
+        return {'success': False, 'error': f'Error generando predicción: {str(e)}'}
 
 
 # ===================================
@@ -334,7 +326,6 @@ def obtener_prediccion_cache(partido_id):
         result = client.table('predicciones').select('*').eq('partido_id', str(partido_id)).execute()
         
         if result.data and len(result.data) > 0:
-            # Incrementar contador de vistas
             pred = result.data[0]
             client.table('predicciones').update({
                 'veces_vista': (pred.get('veces_vista', 0) or 0) + 1
@@ -390,16 +381,12 @@ def verificar_vip(email):
         if result.data and len(result.data) > 0:
             user = result.data[0]
             if user.get('es_vip'):
-                # Verificar si no ha expirado
                 if user.get('vip_hasta'):
                     vip_hasta = datetime.fromisoformat(user['vip_hasta'].replace('Z', '+00:00'))
                     if vip_hasta > datetime.now(vip_hasta.tzinfo):
                         return True
                     else:
-                        # VIP expirado, desactivar
-                        client.table('usuarios').update({
-                            'es_vip': False
-                        }).eq('email', email).execute()
+                        client.table('usuarios').update({'es_vip': False}).eq('email', email).execute()
                         return False
         
         return False
@@ -432,12 +419,10 @@ def registrar_vista(email, partido_id):
             return False
         
         hoy = datetime.now().strftime('%Y-%m-%d')
-        
-        # Verificar si ya vio ESTE partido hoy (no contar doble)
         existente = client.table('vistas_predicciones').select('id').eq('email', email).eq('partido_id', str(partido_id)).eq('fecha_vista', hoy).execute()
         
         if existente.data and len(existente.data) > 0:
-            return True  # ya lo vio, no cuenta doble
+            return True
         
         client.table('vistas_predicciones').insert({
             'email': email,
@@ -586,13 +571,10 @@ def listar_ligas():
 
 @profeta_bp.route('/predecir/<evento_id>', methods=['GET'])
 def predecir_partido(evento_id):
-    """
-    🔮 Genera o devuelve la predicción IA de un partido.
-    Verifica límite de vistas para usuarios NO VIP.
-    """
+    """🔮 Genera o devuelve la predicción IA de un partido."""
     try:
-        # 1️⃣ Verificar autenticación
-        email = session.get('email')
+        # 1️⃣ Verificar autenticación (compatible con auth.py)
+        email = obtener_email_sesion()
         if not email:
             return jsonify({
                 'success': False,
@@ -608,7 +590,6 @@ def predecir_partido(evento_id):
         ya_vio_este = False
         
         if cache:
-            # Verificar si ya lo vio HOY (no cuenta doble)
             client = get_client()
             hoy = datetime.now().strftime('%Y-%m-%d')
             visto = client.table('vistas_predicciones').select('id').eq('email', email).eq('partido_id', str(evento_id)).eq('fecha_vista', hoy).execute()
@@ -642,7 +623,6 @@ def predecir_partido(evento_id):
             })
         
         # 6️⃣ Generar nueva predicción
-        # Obtener detalles del partido
         detalles = obtener_detalles_partido(evento_id)
         if not detalles['success']:
             return jsonify({
@@ -652,23 +632,18 @@ def predecir_partido(evento_id):
         
         partido = detalles['partido']
         
-        # Obtener forma reciente de ambos equipos
         id_local = partido.get('idHomeTeam')
         id_visitante = partido.get('idAwayTeam')
         
         forma_local = obtener_ultimos_partidos_equipo(id_local) if id_local else {'success': False, 'partidos': []}
         forma_visitante = obtener_ultimos_partidos_equipo(id_visitante) if id_visitante else {'success': False, 'partidos': []}
         
-        # Generar predicción con NVIDIA
         prediccion = generar_prediccion_nvidia(partido, forma_local, forma_visitante)
         
         if not prediccion['success']:
             return jsonify(prediccion), 500
         
-        # Guardar en cache
         guardar_prediccion_cache(partido, prediccion)
-        
-        # Registrar vista
         registrar_vista(email, evento_id)
         
         return jsonify({
@@ -682,10 +657,7 @@ def predecir_partido(evento_id):
         })
         
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Error interno: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
 
 # ===================================
@@ -696,14 +668,13 @@ def predecir_partido(evento_id):
 def estado_vip():
     """Verifica el estado VIP del usuario actual."""
     try:
-        email = session.get('email')
+        email = obtener_email_sesion()
         if not email:
             return jsonify({'success': False, 'error': 'No autenticado'}), 401
         
         es_vip = verificar_vip(email)
         vistas_hoy = contar_vistas_hoy(email)
         
-        # Obtener fecha de expiración si es VIP
         vip_hasta = None
         if es_vip:
             client = get_client()
@@ -727,7 +698,7 @@ def estado_vip():
 def activar_vip():
     """Activa VIP con un código."""
     try:
-        email = session.get('email')
+        email = obtener_email_sesion()
         if not email:
             return jsonify({'success': False, 'error': 'No autenticado'}), 401
         
@@ -738,8 +709,6 @@ def activar_vip():
             return jsonify({'success': False, 'error': 'Código requerido'}), 400
         
         client = get_client()
-        
-        # Verificar código
         result = client.table('codigos_vip').select('*').eq('codigo', codigo).execute()
         
         if not result.data:
@@ -747,26 +716,21 @@ def activar_vip():
         
         codigo_data = result.data[0]
         
-        # Verificar si está activo
         if not codigo_data.get('activo'):
             return jsonify({'success': False, 'error': 'Código ya usado o inactivo'}), 400
         
-        # Verificar si ya fue usado
         if codigo_data.get('usado_por'):
             return jsonify({'success': False, 'error': 'Este código ya fue usado'}), 400
         
-        # Activar VIP
         dias = codigo_data.get('dias_duracion', 30)
         vip_hasta = (datetime.now() + timedelta(days=dias)).isoformat()
         
-        # Actualizar usuario
         client.table('usuarios').update({
             'es_vip': True,
             'vip_hasta': vip_hasta,
             'codigo_vip_usado': codigo
         }).eq('email', email).execute()
         
-        # Marcar código como usado
         client.table('codigos_vip').update({
             'activo': False,
             'usado_por': email,
@@ -801,14 +765,11 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'profeta',
-        'version': 'V3.0 - Predicciones IA + VIP',
+        'version': 'V3.1 - Fix sesión',
         'thesportsdb_key': THESPORTSDB_KEY,
         'nvidia_configurada': bool(NVIDIA_API_KEY),
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
-        'endpoints_nuevos': [
-            '/api/profeta/predecir/<evento_id>',
-            '/api/profeta/vip/estado',
-            '/api/profeta/vip/activar'
-        ]
+        'sesion_activa': bool(session.get('usuario_email')),
+        'usuario_actual': session.get('usuario_email', 'no logueado')
     })
