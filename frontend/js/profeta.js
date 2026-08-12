@@ -429,9 +429,9 @@ async function verPrediccionIA(eventoId) {
                         <p class="precio-metodo">${data.metodo}</p>
                     </div>
                     
-                    <div class="vip-acciones">
-                        <button onclick="mostrarSeccion('apoyar')" class="btn-vip-donar">
-                            💛 Ir a Donar
+                 <div class="vip-acciones">
+                        <button onclick="contactarWhatsAppVIP()" class="btn-vip-donar">
+                            💛 Contactar y Donar
                         </button>
                         <button onclick="mostrarActivarVIP()" class="btn-vip-codigo">
                             🎟️ Ya tengo código VIP
@@ -439,8 +439,8 @@ async function verPrediccionIA(eventoId) {
                     </div>
                     
                     <p class="vip-nota">
-                        📱 <strong>WhatsApp para código VIP:</strong> 
-                        <a href="https://wa.me/573001234567" target="_blank">+57 300 123 4567</a>
+                        📱 <strong>WhatsApp directo:</strong> 
+                        <a href="https://wa.me/573171547065?text=${encodeURIComponent('Hola Profeta! 🦉 Vengo de Didasko AI y quiero mi código VIP. Ya donaré ⚽')}" target="_blank">+57 317 154 7065</a>
                     </p>
                 </div>
             `;
