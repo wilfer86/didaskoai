@@ -1024,3 +1024,429 @@
     .marcador-grande { font-size: 32px; }
     .partido-video iframe { height: 200px; }
 }
+/* ═══════════════════════════════════════════════
+   🔮 PREDICCIONES IA + SISTEMA VIP
+═══════════════════════════════════════════════ */
+
+/* ═══════ BOTÓN PREDICCIÓN IA ═══════ */
+
+.prediccion-boton-container {
+    text-align: center;
+    margin-top: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05));
+    border-radius: 15px;
+    border: 2px dashed rgba(212, 175, 55, 0.4);
+}
+
+.btn-prediccion-ia {
+    background: linear-gradient(135deg, #d4af37, #f4c430, #d4af37);
+    color: #0a1929;
+    border: 3px solid #fff3cd;
+    padding: 15px 35px;
+    border-radius: 30px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.4);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.btn-prediccion-ia:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.7);
+}
+
+.btn-prediccion-ia:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    animation: none;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5); }
+    50% { box-shadow: 0 6px 30px rgba(212, 175, 55, 0.9); }
+}
+
+.prediccion-hint {
+    color: #a8c5e0;
+    font-size: 12px;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+/* ═══════ LOADER PREDICCIÓN ═══════ */
+
+.prediccion-loader {
+    text-align: center;
+    padding: 30px;
+    color: var(--dorado);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+    margin-top: 20px;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+}
+
+.prediccion-loader p {
+    margin-top: 12px;
+    font-size: 15px;
+    color: var(--dorado);
+}
+
+.prediccion-loader p.mini {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 5px;
+}
+
+/* ═══════ PREDICCIÓN EXITOSA ═══════ */
+
+.prediccion-exitosa {
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.15), rgba(10, 25, 41, 0.6));
+    border: 3px solid var(--dorado);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+    animation: fadeIn 0.5s ease;
+}
+
+.prediccion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(212, 175, 55, 0.4);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.prediccion-header h3 {
+    color: var(--dorado);
+    font-size: 20px;
+    margin: 0;
+    text-shadow: 0 2px 8px rgba(212, 175, 55, 0.5);
+}
+
+.prediccion-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge-vip, .badge-cache, .badge-nueva {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.badge-vip {
+    background: linear-gradient(135deg, #d4af37, #f4c430);
+    color: #0a1929;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.5);
+}
+
+.badge-cache {
+    background: rgba(100, 149, 237, 0.3);
+    color: #90b4e8;
+    border: 1px solid #6495ed;
+}
+
+.badge-nueva {
+    background: rgba(76, 175, 80, 0.3);
+    color: #81c784;
+    border: 1px solid #4caf50;
+}
+
+.prediccion-texto {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 12px;
+    color: white;
+    line-height: 1.7;
+    font-size: 15px;
+    border-left: 4px solid var(--dorado);
+}
+
+.prediccion-texto p {
+    margin: 10px 0;
+    color: white;
+}
+
+.prediccion-texto strong {
+    color: var(--dorado);
+    font-weight: bold;
+}
+
+.prediccion-footer {
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(212, 175, 55, 0.3);
+    text-align: center;
+}
+
+.prediccion-ia {
+    color: #a8c5e0;
+    font-size: 13px;
+    margin: 5px 0;
+}
+
+.prediccion-ia strong {
+    color: var(--dorado);
+}
+
+.prediccion-disclaimer {
+    color: rgba(255, 193, 7, 0.9);
+    font-size: 11px;
+    font-style: italic;
+    margin: 5px 0;
+}
+
+/* ═══════ PANTALLA VIP (LÍMITE ALCANZADO) ═══════ */
+
+.prediccion-vip {
+    background: linear-gradient(145deg, rgba(212, 175, 55, 0.2), rgba(10, 25, 41, 0.9));
+    border: 3px solid var(--dorado);
+    border-radius: 20px;
+    padding: 30px 20px;
+    margin-top: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+    animation: fadeIn 0.5s ease;
+}
+
+.vip-icono {
+    font-size: 70px;
+    margin-bottom: 15px;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.prediccion-vip h3 {
+    color: var(--dorado);
+    font-size: 24px;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 10px rgba(212, 175, 55, 0.6);
+}
+
+.vip-mensaje {
+    color: white;
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 25px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border-left: 4px solid var(--dorado);
+}
+
+.vip-beneficios {
+    background: rgba(212, 175, 55, 0.1);
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.vip-beneficios h4 {
+    color: var(--dorado);
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.vip-beneficios ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.vip-beneficios li {
+    color: white;
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.vip-beneficios li:last-child {
+    border-bottom: none;
+}
+
+.vip-precio {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(212, 175, 55, 0.15));
+    border: 2px solid var(--dorado);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.vip-precio h4 {
+    color: var(--dorado);
+    font-size: 16px;
+    margin-bottom: 8px;
+}
+
+.precio-monto {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    margin: 8px 0;
+    text-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
+}
+
+.precio-metodo {
+    color: #a8c5e0;
+    font-size: 13px;
+    font-style: italic;
+    margin: 5px 0;
+}
+
+.vip-acciones {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.btn-vip-donar, .btn-vip-codigo {
+    padding: 12px 25px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid;
+}
+
+.btn-vip-donar {
+    background: linear-gradient(135deg, #d4af37, #f4c430);
+    color: #0a1929;
+    border-color: #fff3cd;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.5);
+}
+
+.btn-vip-donar:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.7);
+}
+
+.btn-vip-codigo {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-vip-codigo:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: white;
+    transform: translateY(-3px);
+}
+
+.vip-nota {
+    color: #a8c5e0;
+    font-size: 13px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.vip-nota a {
+    color: #25D366;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.vip-nota a:hover {
+    text-decoration: underline;
+}
+
+/* ═══════ ERRORES DE PREDICCIÓN ═══════ */
+
+.prediccion-error {
+    background: rgba(244, 67, 54, 0.15);
+    border: 2px solid rgba(244, 67, 54, 0.5);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    color: #ffcdd2;
+}
+
+.prediccion-error h3 {
+    color: #ff6b6b;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.prediccion-error p {
+    color: white;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+/* ═══════ RESPONSIVE MÓVIL ═══════ */
+
+@media (max-width: 768px) {
+    .btn-prediccion-ia {
+        padding: 12px 25px;
+        font-size: 15px;
+    }
+    
+    .prediccion-exitosa {
+        padding: 15px;
+    }
+    
+    .prediccion-header h3 {
+        font-size: 17px;
+    }
+    
+    .prediccion-texto {
+        padding: 15px;
+        font-size: 14px;
+    }
+    
+    .prediccion-vip {
+        padding: 20px 15px;
+    }
+    
+    .prediccion-vip h3 {
+        font-size: 20px;
+    }
+    
+    .vip-icono {
+        font-size: 55px;
+    }
+    
+    .precio-monto {
+        font-size: 22px;
+    }
+    
+    .vip-acciones {
+        flex-direction: column;
+    }
+    
+    .btn-vip-donar, .btn-vip-codigo {
+        width: 100%;
+    }
+    
+    .prediccion-badges {
+        justify-content: center;
+        width: 100%;
+    }
+    
+    .prediccion-header {
+        justify-content: center;
+        text-align: center;
+    }
+}
