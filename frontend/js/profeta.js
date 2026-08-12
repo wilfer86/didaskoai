@@ -565,4 +565,16 @@ function volverAProfeta() {
     profetaCargado = true;
 }
 
-if (CONFIG.DEBUG) console.log('🌐 profeta.js V3.3 cargado con Predicciones IA');
+// ===================================
+// 📱 Contactar WhatsApp para VIP
+// ===================================
+function contactarWhatsAppVIP() {
+    const mensaje = encodeURIComponent(
+        'Hola Profeta! 🦉 Vengo de Didasko AI y quiero mi código VIP. Ya donaré ⚽'
+    );
+    const numero = '573171547065';
+    const url = `https://wa.me/${numero}?text=${mensaje}`;
+    window.open(url, '_blank');
+}
+
+if (CONFIG.DEBUG) console.log('🌐 profeta.js V3.3 cargado con Predicciones IA + WhatsApp');
