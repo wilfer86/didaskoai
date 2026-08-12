@@ -604,8 +604,8 @@ def predecir_partido(evento_id):
                     'error': 'Límite diario alcanzado',
                     'requiere_vip': True,
                     'mensaje': '🔒 Ya viste tu predicción gratis de hoy. Hazte VIP para ver todas las predicciones del mes.',
-                    'precio': '$4.000 COP (voluntario)',
-                    'metodo': 'Solicita tu código VIP por WhatsApp después de donar'
+                    'precio': 'Aporte desde $4.000 COP en adelante',
+                    'metodo': 'Contáctame por WhatsApp y te ayudo con tu código VIP'
                 }), 403
         
         # 5️⃣ Si hay cache, devolverla
