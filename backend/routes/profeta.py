@@ -262,17 +262,17 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
         }
         
         payload = {
-            "model": "meta/llama-3.1-70b-instruct",
+            "model": "meta/llama-3.1-8b-instruct",
             "messages": [
                 {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.7,
-            "max_tokens": 500,
+            "max_tokens": 400,
             "top_p": 0.9
         }
         
-        response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=30)
+        response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=60)
         
         if response.status_code == 200:
             data = response.json()
