@@ -31,6 +31,135 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
+        <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
+    <a href="https://t.me/DidaskoProfetaBot" 
+       target="_blank" 
+       id="btn-bot-flotante" 
+       title="Habla con nuestro bot en Telegram">
+        <div class="btn-bot-icono">🤖</div>
+        <div class="btn-bot-texto">
+            <span class="btn-bot-titulo">Bot Predicciones</span>
+            <span class="btn-bot-subtitulo">Habla en Telegram</span>
+        </div>
+        <div class="btn-bot-pulso"></div>
+    </a>
+
+    <style>
+        /* 🤖 Botón flotante del bot */
+        #btn-bot-flotante {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: linear-gradient(135deg, #0088cc, #005a8f);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
+            z-index: 9998;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #btn-bot-flotante:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
+        }
+        
+        .btn-bot-icono {
+            font-size: 28px;
+            animation: botBounce 2s ease-in-out infinite;
+        }
+        
+        .btn-bot-texto {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        
+        .btn-bot-titulo {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .btn-bot-subtitulo {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .btn-bot-pulso {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(0, 136, 204, 0.4);
+            transform: translateY(-50%);
+            animation: botPulso 2s ease-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @keyframes botBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes botPulso {
+            0% {
+                transform: translateY(-50%) scale(1);
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-50%) scale(1.8);
+                opacity: 0;
+            }
+        }
+        
+        /* 📱 Responsive: en móvil solo mostrar icono */
+        @media (max-width: 600px) {
+            #btn-bot-flotante {
+                bottom: 90px;
+                right: 15px;
+                padding: 12px;
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                justify-content: center;
+            }
+            
+            .btn-bot-texto {
+                display: none;
+            }
+            
+            .btn-bot-icono {
+                font-size: 32px;
+            }
+            
+            .btn-bot-pulso {
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 55px;
+                height: 55px;
+            }
+            
+            @keyframes botPulso {
+                0% {
+                    transform: translate(-50%, -50%) scale(1);
+                    opacity: 0.6;
+                }
+                100% {
+                    transform: translate(-50%, -50%) scale(1.8);
+                    opacity: 0;
+                }
+            }
+        }
+    </style>
         body { visibility: hidden; }
         
         .tab-salir {
