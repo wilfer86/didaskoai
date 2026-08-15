@@ -1,10 +1,9 @@
 # ===================================
-# telegram_bot.py - Bot Didasko V2.3
+# telegram_bot.py - Bot Didasko V2.4
 # ===================================
-# MEJORAS V2.3:
-# - Comandos interactivos (/start, /hoy, /web, /vip)
-# - Webhook para recibir mensajes
-# - Sistema de respuestas automáticas
+# MEJORAS V2.4:
+# - Todas las publicaciones invitan a hablar con el bot
+# - Aumenta conversión canal → bot
 # ===================================
 
 import os
@@ -14,7 +13,6 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from supabase_client import get_client
 
-# Importar funciones del profeta
 from routes.profeta import (
     obtener_detalles_partido,
     obtener_ultimos_partidos_equipo,
@@ -35,6 +33,8 @@ TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 DIDASKO_URL = 'https://didasko-ai.onrender.com'
 WHATSAPP_NUMERO = '573171547065'
 WHATSAPP_DISPLAY = '+57 317 154 7065'
+BOT_LINK = 'https://t.me/DidaskoProfetaBot'
+BOT_USERNAME = '@DidaskoProfetaBot'
 
 # ===================================
 # 📰 NOTICIAS RSS
@@ -90,6 +90,19 @@ def enviar_mensaje_telegram(texto, canal=TELEGRAM_CHANNEL):
 def responder_a_usuario(chat_id, texto):
     """Responde a un chat privado o grupo."""
     return enviar_mensaje_telegram(texto, canal=chat_id)
+
+
+# ===================================
+# 🎁 FOOTER PROMOCIÓN DEL BOT
+# ===================================
+
+def obtener_footer_bot():
+    """Genera el footer promocional del bot para todas las publicaciones."""
+    footer = "\n━━━━━━━━━━━━━━━\n"
+    footer += "🤖 <b>¿Quieres predicciones personalizadas?</b>\n"
+    footer += f"💬 Habla con nuestro bot: <a href='{BOT_LINK}'>{BOT_USERNAME}</a>\n"
+    footer += "✨ Escribe /hoy y recibe la predicción al instante\n"
+    return footer
 
 
 # ===================================
@@ -299,8 +312,10 @@ def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adela
             mensaje += f"{noticia}\n"
         mensaje += "\n"
     
-    mensaje += "━━━━━━━━━━━━━━━\n"
-    mensaje += "🦉 <b>¿Quieres predicciones ilimitadas?</b>\n"
+    # 🆕 Footer con promoción del bot
+    mensaje += obtener_footer_bot()
+    mensaje += "\n"
+    mensaje += "🦉 <b>¿Predicciones ilimitadas?</b>\n"
     mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
     mensaje += "#DidaskoAI #Futbol #Predicciones ⚽🔮"
     
@@ -325,11 +340,10 @@ def formatear_publicacion_solo_noticias(noticias):
         for noticia in noticias:
             mensaje += f"{noticia}\n\n"
     
-    mensaje += "━━━━━━━━━━━━━━━\n"
+    # 🆕 Footer con promoción del bot
+    mensaje += obtener_footer_bot()
+    mensaje += "\n"
     mensaje += "🦉 <b>Visita Didasko AI:</b>\n"
-    mensaje += "🔮 Predicciones IA con NVIDIA\n"
-    mensaje += "⚽ Análisis de partidos\n"
-    mensaje += "🏆 Todas las ligas del mundo\n\n"
     mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
     mensaje += "#DidaskoAI #Futbol #Deportes ⚽🔮"
     
@@ -482,7 +496,6 @@ def procesar_comando(mensaje_texto, nombre_usuario=''):
     elif texto.startswith('/ayuda') or texto.startswith('/help'):
         return comando_ayuda()
     else:
-        # Mensaje que no es comando
         mensaje = "🦉 ¡Hola! Usa /ayuda para ver mis comandos disponibles.\n\n"
         mensaje += f"🌐 Visita: <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>"
         return mensaje
@@ -565,7 +578,10 @@ def publicar_anuncio():
         mensaje += "📱 <b>Contáctanos:</b>\n"
         mensaje += f"📞 WhatsApp: <a href='https://wa.me/{WHATSAPP_NUMERO}'>{WHATSAPP_DISPLAY}</a>\n"
         mensaje += f"🌐 Web: <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n"
-        mensaje += "━━━━━━━━━━━━━━━\n\n"
+        
+        # 🆕 Footer con promoción del bot
+        mensaje += obtener_footer_bot()
+        mensaje += "\n"
         mensaje += "🚀 <i>Impulsa tu marca con Didasko Deportes</i>\n\n"
         mensaje += "#Publicidad #DidaskoAI #Deportes #Marketing"
         
@@ -595,7 +611,6 @@ def webhook():
         if not data:
             return jsonify({'ok': True})
         
-        # Extraer mensaje
         mensaje = data.get('message', {})
         if not mensaje:
             return jsonify({'ok': True})
@@ -611,11 +626,9 @@ def webhook():
         
         print(f"📩 Mensaje recibido de {nombre} ({username}): {texto}")
         
-        # Procesar comando y responder
         respuesta = procesar_comando(texto, nombre)
         resultado = responder_a_usuario(chat_id, respuesta)
         
-        # Guardar contacto en Supabase (opcional)
         try:
             client = get_client()
             if client and username:
@@ -637,7 +650,7 @@ def webhook():
 
 
 # ===================================
-# ⚙️ CONFIGURAR WEBHOOK
+# ⚙️ CONFIGURAR WEBHOOK Y COMANDOS
 # ===================================
 
 @telegram_bp.route('/configurar-webhook', methods=['GET'])
@@ -701,7 +714,6 @@ def test():
         bot_ok = False
         bot_info = None
     
-    # Verificar webhook
     try:
         webhook_response = requests.get(f"{TELEGRAM_API}/getWebhookInfo", timeout=5)
         webhook_info = webhook_response.json() if webhook_response.status_code == 200 else None
@@ -711,12 +723,13 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'telegram',
-        'version': 'V2.3 - Con comandos interactivos',
+        'version': 'V2.4 - Con promoción del bot',
         'token_configurado': bool(TELEGRAM_BOT_TOKEN),
         'bot_activo': bot_ok,
         'bot_info': bot_info,
         'webhook_info': webhook_info,
         'canal': TELEGRAM_CHANNEL,
+        'bot_link': BOT_LINK,
         'endpoints': [
             '/api/telegram/test',
             '/api/telegram/enviar-prueba',
@@ -734,10 +747,10 @@ def test():
 def enviar_prueba():
     """Envía un mensaje de prueba al canal."""
     try:
-        mensaje = "🦉 <b>Test Didasko AI V2.3</b>\n\n"
+        mensaje = "🦉 <b>Test Didasko AI V2.4</b>\n\n"
         mensaje += "✅ Bot con comandos interactivos\n"
         mensaje += "🤖 Webhook activo\n"
-        mensaje += "💬 Respuestas automáticas\n\n"
+        mensaje += "📢 Promoción del bot integrada\n\n"
         mensaje += f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         
         resultado = enviar_mensaje_telegram(mensaje)
