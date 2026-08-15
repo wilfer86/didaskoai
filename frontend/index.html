@@ -74,7 +74,7 @@
             fetch('/api/auth/me', { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {
-                    if (!data.exito || !data.logueado) {
+                    if (!data.success || !data.logueado) {
                         window.location.replace('/login.html');
                     } else {
                         localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
