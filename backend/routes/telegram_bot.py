@@ -1,11 +1,10 @@
 # ===================================
-# telegram_bot.py - Bot Didasko V2.0
+# telegram_bot.py - Bot Didasko V2.1
 # ===================================
-# MEJORAS V2.0:
-# - Siempre publica algo relevante
+# MEJORAS V2.1:
+# - Genera predicción IA al vuelo si no hay cache
+# - Reutiliza funciones del profeta.py
 # - Sistema de 3 niveles de respaldo
-# - Busca partidos en próximos días si hoy no hay
-# - Publica noticias deportivas si no hay partidos
 # ===================================
 
 import os
@@ -14,6 +13,15 @@ import feedparser
 from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from supabase_client import get_client
+
+# 🆕 Importar funciones del profeta para generar predicciones
+from routes.profeta import (
+    obtener_detalles_partido,
+    obtener_ultimos_partidos_equipo,
+    generar_prediccion_nvidia,
+    guardar_prediccion_cache,
+    obtener_prediccion_cache
+)
 
 telegram_bp = Blueprint('telegram', __name__)
 
@@ -67,7 +75,7 @@ def enviar_mensaje_telegram(texto, canal=TELEGRAM_CHANNEL):
             'parse_mode': 'HTML',
             'disable_web_page_preview': False
         }
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=15)
         
         if response.status_code == 200:
             return {'success': True, 'data': response.json()}
@@ -116,7 +124,6 @@ def obtener_noticias_generales(limite=5):
 def buscar_partidos_dia(fecha_str):
     """Busca partidos en una fecha específica desde TheSportsDB."""
     try:
-        # API pública de TheSportsDB
         url = f"https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d={fecha_str}&s=Soccer"
         response = requests.get(url, timeout=15)
         
@@ -139,7 +146,7 @@ def elegir_mejor_partido(partidos):
     prioridades = [
         'UEFA Champions League',
         'UEFA Europa League',
-        'LaLiga', 'Spanish La Liga', 'Spanish La Liga',
+        'LaLiga', 'Spanish La Liga',
         'Premier League', 'English Premier League',
         'Serie A', 'Italian Serie A',
         'Bundesliga', 'German Bundesliga',
@@ -149,31 +156,26 @@ def elegir_mejor_partido(partidos):
         'Colombia Categoría Primera A',
         'Copa BetPlay',
         'Brazilian Serie A',
-        'Argentine Primera División'
+        'Argentinian Primera Division',
+        'American USL Championship',
+        'American Major League Soccer',
+        'Mexican Primera Division'
     ]
     
-    # Buscar por prioridad
     for liga_prio in prioridades:
         for partido in partidos:
             liga = partido.get('strLeague', '')
             if liga_prio.lower() in liga.lower():
                 return partido
     
-    # Si no hay prioritario, devolver el primero
     return partidos[0]
 
 
 def buscar_mejor_partido_disponible():
-    """
-    Sistema de 3 niveles:
-    1. Partido de hoy
-    2. Partido de mañana
-    3. Partido de pasado mañana
-    Devuelve (partido, dias_desde_hoy) o (None, -1)
-    """
+    """Busca el mejor partido en próximos 4 días."""
     hoy = datetime.now()
     
-    for dias_adelante in range(0, 4):  # hoy, +1, +2, +3
+    for dias_adelante in range(0, 4):
         fecha = hoy + timedelta(days=dias_adelante)
         fecha_str = fecha.strftime('%Y-%m-%d')
         
@@ -189,29 +191,79 @@ def buscar_mejor_partido_disponible():
     return (None, -1)
 
 
-def buscar_prediccion_cache(evento_id):
-    """Busca predicción en cache de Supabase."""
+def obtener_o_generar_prediccion(partido):
+    """
+    🆕 Busca en cache o genera nueva predicción con IA al vuelo.
+    """
     try:
-        client = get_client()
-        if not client:
-            return None
+        evento_id = partido.get('idEvent')
         
-        result = client.table('predicciones').select('*').eq('partido_id', str(evento_id)).execute()
+        # 1. Buscar en cache
+        cache = obtener_prediccion_cache(evento_id)
+        if cache:
+            print(f"✅ Predicción encontrada en cache")
+            return {
+                'success': True,
+                'prediccion': cache.get('prediccion_texto', ''),
+                'ganador': cache.get('ganador_predicho', ''),
+                'confianza': cache.get('confianza', 60),
+                'desde_cache': True
+            }
         
-        if result.data and len(result.data) > 0:
-            return result.data[0]
-        return None
+        # 2. Generar nueva con IA
+        print(f"🤖 Generando predicción con NVIDIA IA...")
+        
+        id_local = partido.get('idHomeTeam')
+        id_visitante = partido.get('idAwayTeam')
+        
+        forma_local = obtener_ultimos_partidos_equipo(id_local) if id_local else {'success': False, 'partidos': []}
+        forma_visitante = obtener_ultimos_partidos_equipo(id_visitante) if id_visitante else {'success': False, 'partidos': []}
+        
+        prediccion = generar_prediccion_nvidia(partido, forma_local, forma_visitante)
+        
+        if prediccion.get('success'):
+            # Guardar en cache para futuras consultas
+            guardar_prediccion_cache(partido, prediccion)
+            print(f"✅ Predicción generada y cacheada")
+            return {
+                'success': True,
+                'prediccion': prediccion.get('prediccion', ''),
+                'ganador': prediccion.get('ganador', ''),
+                'confianza': prediccion.get('confianza', 60),
+                'desde_cache': False
+            }
+        
+        print(f"⚠️ Error generando predicción: {prediccion.get('error')}")
+        return {'success': False, 'error': prediccion.get('error')}
+        
     except Exception as e:
-        print(f"⚠️ Error cache predicción: {e}")
-        return None
+        print(f"❌ Error obtener_o_generar_prediccion: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def extraer_resumen_prediccion(texto_completo, max_lineas=6):
+    """
+    Extrae las partes más importantes de la predicción IA
+    para que quepa bien en Telegram.
+    """
+    if not texto_completo:
+        return ""
+    
+    # Reemplazar markdown por HTML de Telegram
+    texto = texto_completo.replace('**', '')
+    
+    # Convertir asteriscos de bullets
+    texto = texto.replace('* ', '• ')
+    
+    return texto.strip()
 
 
 # ===================================
 # 📝 FORMATEADORES DE MENSAJE
 # ===================================
 
-def formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante=0):
-    """Crea el mensaje HTML para publicar un partido."""
+def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adelante=0):
+    """Crea el mensaje HTML para publicar un partido con predicción IA completa."""
     
     equipo_local = partido.get('strHomeTeam', 'Local')
     equipo_visitante = partido.get('strAwayTeam', 'Visitante')
@@ -220,7 +272,7 @@ def formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante=0
     estadio = partido.get('strVenue', '')
     fecha_partido = partido.get('dateEvent', '')
     
-    # Determinar título según cuándo se juega
+    # Título según día
     if dias_adelante == 0:
         titulo = "🔮 <b>PREDICCIÓN DEL DÍA</b>"
         fecha_txt = "📅 HOY"
@@ -242,14 +294,16 @@ def formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante=0
     
     mensaje += "\n"
     
-    # Predicción IA (si existe)
-    if prediccion and prediccion.get('prediccion_texto'):
+    # 🆕 Predicción IA COMPLETA
+    if prediccion_data and prediccion_data.get('success') and prediccion_data.get('prediccion'):
         mensaje += "━━━━━━━━━━━━━━━\n"
-        mensaje += f"🎯 <b>Ganador probable:</b> {prediccion.get('ganador_predicho', 'N/A')}\n"
-        mensaje += f"📊 <b>Confianza:</b> {prediccion.get('confianza', 60)}%\n"
+        mensaje += "🤖 <b>ANÁLISIS IA (NVIDIA):</b>\n\n"
+        
+        texto_pred = extraer_resumen_prediccion(prediccion_data.get('prediccion', ''))
+        mensaje += f"{texto_pred}\n"
         mensaje += "━━━━━━━━━━━━━━━\n\n"
     else:
-        mensaje += "🔮 <i>Obtén la predicción IA completa en Didasko AI</i>\n\n"
+        mensaje += "🔮 <i>Obtén la predicción IA en Didasko AI</i>\n\n"
     
     # Noticias
     if noticias:
@@ -263,6 +317,10 @@ def formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante=0
     mensaje += "🦉 <b>¿Quieres predicciones ilimitadas?</b>\n"
     mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
     mensaje += "#DidaskoAI #Futbol #Predicciones ⚽🔮"
+    
+    # ⚠️ Telegram tiene límite de 4096 caracteres
+    if len(mensaje) > 4000:
+        mensaje = mensaje[:3950] + "\n\n... (continúa en la web)"
     
     return mensaje
 
@@ -300,10 +358,7 @@ def formatear_publicacion_solo_noticias(noticias):
 @telegram_bp.route('/publicar-prediccion-diaria', methods=['GET', 'POST'])
 def publicar_prediccion_diaria():
     """
-    Publica contenido diario con sistema de 3 niveles:
-    1. Partido de hoy con predicción
-    2. Partido próximo (mañana, +2, +3 días)
-    3. Noticias deportivas del día
+    Publica contenido diario con predicción IA generada al vuelo.
     """
     try:
         if not TELEGRAM_BOT_TOKEN:
@@ -312,17 +367,22 @@ def publicar_prediccion_diaria():
                 'error': 'TELEGRAM_BOT_TOKEN no configurado en Render'
             }), 500
         
-        # NIVEL 1 y 2: Buscar mejor partido disponible (hoy o próximos días)
+        # NIVEL 1 y 2: Buscar mejor partido disponible
         partido, dias_adelante = buscar_mejor_partido_disponible()
         
         if partido:
-            # ✅ Hay partido disponible
-            evento_id = partido.get('idEvent')
-            prediccion = buscar_prediccion_cache(evento_id)
+            # ✅ Hay partido - generar predicción IA
+            print(f"⚽ Partido encontrado: {partido.get('strEvent')}")
+            
+            # 🆕 Obtener o generar predicción con IA
+            prediccion_data = obtener_o_generar_prediccion(partido)
+            
+            # Obtener noticias
             liga = partido.get('strLeague', 'default')
             noticias = obtener_noticias_liga(liga, limite=3)
             
-            mensaje = formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante)
+            # Formatear y enviar
+            mensaje = formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adelante)
             resultado = enviar_mensaje_telegram(mensaje)
             
             return jsonify({
@@ -331,13 +391,15 @@ def publicar_prediccion_diaria():
                 'partido': f"{partido.get('strHomeTeam')} vs {partido.get('strAwayTeam')}",
                 'liga': liga,
                 'dias_adelante': dias_adelante,
-                'con_prediccion': prediccion is not None,
+                'prediccion_generada': prediccion_data.get('success', False),
+                'desde_cache': prediccion_data.get('desde_cache', False),
                 'noticias_incluidas': len(noticias),
+                'longitud_mensaje': len(mensaje),
                 'telegram_response': resultado
             })
         
-        # NIVEL 3: No hay partidos - Publicar solo noticias
-        print("⚠️ No hay partidos disponibles - Publicando noticias generales")
+        # NIVEL 3: No hay partidos - Solo noticias
+        print("⚠️ No hay partidos disponibles - Publicando noticias")
         noticias = obtener_noticias_generales(limite=5)
         
         mensaje = formatear_publicacion_solo_noticias(noticias)
@@ -376,7 +438,7 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'telegram',
-        'version': 'V2.0',
+        'version': 'V2.1 - Con IA al vuelo',
         'token_configurado': bool(TELEGRAM_BOT_TOKEN),
         'bot_activo': bot_ok,
         'bot_info': bot_info,
@@ -394,10 +456,10 @@ def test():
 def enviar_prueba():
     """Envía un mensaje de prueba al canal."""
     try:
-        mensaje = "🦉 <b>Test desde Didasko AI V2.0</b>\n\n"
-        mensaje += "✅ El bot está funcionando correctamente\n"
-        mensaje += "⚽ Sistema mejorado activado\n\n"
-        mensaje += f"🕒 Enviado: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+        mensaje = "🦉 <b>Test desde Didasko AI V2.1</b>\n\n"
+        mensaje += "✅ Bot funcionando con IA integrada\n"
+        mensaje += "🤖 NVIDIA Llama activo\n\n"
+        mensaje += f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
         mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>"
         
         resultado = enviar_mensaje_telegram(mensaje)
@@ -408,7 +470,7 @@ def enviar_prueba():
 
 @telegram_bp.route('/diagnostico', methods=['GET'])
 def diagnostico():
-    """Diagnostica qué partidos hay disponibles en próximos días."""
+    """Diagnostica qué partidos hay disponibles."""
     try:
         hoy = datetime.now()
         resultado = {
