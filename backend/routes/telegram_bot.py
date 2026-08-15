@@ -1,10 +1,10 @@
 # ===================================
-# telegram_bot.py - Bot Didasko V2.1
+# telegram_bot.py - Bot Didasko V2.2
 # ===================================
-# MEJORAS V2.1:
-# - Genera predicción IA al vuelo si no hay cache
-# - Reutiliza funciones del profeta.py
+# MEJORAS V2.2:
+# - Predicción IA al vuelo si no hay cache
 # - Sistema de 3 niveles de respaldo
+# - Endpoint de anuncio comercial diario
 # ===================================
 
 import os
@@ -33,6 +33,8 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHANNEL = '@DidaskoDeportes'
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 DIDASKO_URL = 'https://didasko-ai.onrender.com'
+WHATSAPP_NUMERO = '573171547065'
+WHATSAPP_DISPLAY = '+57 317 154 7065'
 
 # ===================================
 # 📰 NOTICIAS RSS
@@ -192,9 +194,7 @@ def buscar_mejor_partido_disponible():
 
 
 def obtener_o_generar_prediccion(partido):
-    """
-    🆕 Busca en cache o genera nueva predicción con IA al vuelo.
-    """
+    """Busca en cache o genera nueva predicción con IA al vuelo."""
     try:
         evento_id = partido.get('idEvent')
         
@@ -222,7 +222,6 @@ def obtener_o_generar_prediccion(partido):
         prediccion = generar_prediccion_nvidia(partido, forma_local, forma_visitante)
         
         if prediccion.get('success'):
-            # Guardar en cache para futuras consultas
             guardar_prediccion_cache(partido, prediccion)
             print(f"✅ Predicción generada y cacheada")
             return {
@@ -242,17 +241,11 @@ def obtener_o_generar_prediccion(partido):
 
 
 def extraer_resumen_prediccion(texto_completo, max_lineas=6):
-    """
-    Extrae las partes más importantes de la predicción IA
-    para que quepa bien en Telegram.
-    """
+    """Extrae y limpia el texto de la predicción IA."""
     if not texto_completo:
         return ""
     
-    # Reemplazar markdown por HTML de Telegram
     texto = texto_completo.replace('**', '')
-    
-    # Convertir asteriscos de bullets
     texto = texto.replace('* ', '• ')
     
     return texto.strip()
@@ -263,7 +256,7 @@ def extraer_resumen_prediccion(texto_completo, max_lineas=6):
 # ===================================
 
 def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adelante=0):
-    """Crea el mensaje HTML para publicar un partido con predicción IA completa."""
+    """Crea el mensaje HTML para publicar un partido con predicción IA."""
     
     equipo_local = partido.get('strHomeTeam', 'Local')
     equipo_visitante = partido.get('strAwayTeam', 'Visitante')
@@ -272,7 +265,6 @@ def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adela
     estadio = partido.get('strVenue', '')
     fecha_partido = partido.get('dateEvent', '')
     
-    # Título según día
     if dias_adelante == 0:
         titulo = "🔮 <b>PREDICCIÓN DEL DÍA</b>"
         fecha_txt = "📅 HOY"
@@ -294,7 +286,6 @@ def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adela
     
     mensaje += "\n"
     
-    # 🆕 Predicción IA COMPLETA
     if prediccion_data and prediccion_data.get('success') and prediccion_data.get('prediccion'):
         mensaje += "━━━━━━━━━━━━━━━\n"
         mensaje += "🤖 <b>ANÁLISIS IA (NVIDIA):</b>\n\n"
@@ -305,20 +296,17 @@ def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adela
     else:
         mensaje += "🔮 <i>Obtén la predicción IA en Didasko AI</i>\n\n"
     
-    # Noticias
     if noticias:
         mensaje += f"📰 <b>ÚLTIMAS NOTICIAS:</b>\n"
         for noticia in noticias:
             mensaje += f"{noticia}\n"
         mensaje += "\n"
     
-    # Call to action
     mensaje += "━━━━━━━━━━━━━━━\n"
     mensaje += "🦉 <b>¿Quieres predicciones ilimitadas?</b>\n"
     mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
     mensaje += "#DidaskoAI #Futbol #Predicciones ⚽🔮"
     
-    # ⚠️ Telegram tiene límite de 4096 caracteres
     if len(mensaje) > 4000:
         mensaje = mensaje[:3950] + "\n\n... (continúa en la web)"
     
@@ -326,7 +314,7 @@ def formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adela
 
 
 def formatear_publicacion_solo_noticias(noticias):
-    """Cuando no hay partidos disponibles, publica noticias del día."""
+    """Cuando no hay partidos, publica noticias del día."""
     import random
     frase = random.choice(FRASES_MOTIVACIONALES)
     fecha_hoy = datetime.now().strftime('%d/%m/%Y')
@@ -352,14 +340,12 @@ def formatear_publicacion_solo_noticias(noticias):
 
 
 # ===================================
-# 🎯 ENDPOINT PRINCIPAL
+# 🎯 ENDPOINT PRINCIPAL - PREDICCIÓN
 # ===================================
 
 @telegram_bp.route('/publicar-prediccion-diaria', methods=['GET', 'POST'])
 def publicar_prediccion_diaria():
-    """
-    Publica contenido diario con predicción IA generada al vuelo.
-    """
+    """Publica predicción del día con IA."""
     try:
         if not TELEGRAM_BOT_TOKEN:
             return jsonify({
@@ -367,21 +353,16 @@ def publicar_prediccion_diaria():
                 'error': 'TELEGRAM_BOT_TOKEN no configurado en Render'
             }), 500
         
-        # NIVEL 1 y 2: Buscar mejor partido disponible
         partido, dias_adelante = buscar_mejor_partido_disponible()
         
         if partido:
-            # ✅ Hay partido - generar predicción IA
             print(f"⚽ Partido encontrado: {partido.get('strEvent')}")
             
-            # 🆕 Obtener o generar predicción con IA
             prediccion_data = obtener_o_generar_prediccion(partido)
             
-            # Obtener noticias
             liga = partido.get('strLeague', 'default')
             noticias = obtener_noticias_liga(liga, limite=3)
             
-            # Formatear y enviar
             mensaje = formatear_publicacion_partido(partido, prediccion_data, noticias, dias_adelante)
             resultado = enviar_mensaje_telegram(mensaje)
             
@@ -398,7 +379,6 @@ def publicar_prediccion_diaria():
                 'telegram_response': resultado
             })
         
-        # NIVEL 3: No hay partidos - Solo noticias
         print("⚠️ No hay partidos disponibles - Publicando noticias")
         noticias = obtener_noticias_generales(limite=5)
         
@@ -421,6 +401,53 @@ def publicar_prediccion_diaria():
 
 
 # ===================================
+# 📢 ENDPOINT DE ANUNCIO COMERCIAL
+# ===================================
+
+@telegram_bp.route('/publicar-anuncio', methods=['GET', 'POST'])
+def publicar_anuncio():
+    """Publica anuncio comercial diario (12 PM)."""
+    try:
+        if not TELEGRAM_BOT_TOKEN:
+            return jsonify({
+                'success': False,
+                'error': 'TELEGRAM_BOT_TOKEN no configurado'
+            }), 500
+        
+        fecha_hoy = datetime.now().strftime('%d/%m/%Y')
+        
+        mensaje = "📢 <b>ESPACIO PUBLICITARIO DISPONIBLE</b>\n\n"
+        mensaje += "🎯 <b>¿Quieres publicar aquí?</b>\n\n"
+        mensaje += "🦉 Llega a nuestra audiencia deportiva con:\n"
+        mensaje += "✅ Publicaciones diarias\n"
+        mensaje += "✅ Contenido de calidad\n"
+        mensaje += "✅ Audiencia comprometida\n"
+        mensaje += "✅ Precios accesibles\n\n"
+        mensaje += "━━━━━━━━━━━━━━━\n"
+        mensaje += "📱 <b>Contáctanos:</b>\n"
+        mensaje += f"📞 WhatsApp: <a href='https://wa.me/{WHATSAPP_NUMERO}'>{WHATSAPP_DISPLAY}</a>\n"
+        mensaje += f"🌐 Web: <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n"
+        mensaje += "━━━━━━━━━━━━━━━\n\n"
+        mensaje += "🚀 <i>Impulsa tu marca con Didasko Deportes</i>\n\n"
+        mensaje += "#Publicidad #DidaskoAI #Deportes #Marketing"
+        
+        resultado = enviar_mensaje_telegram(mensaje)
+        
+        return jsonify({
+            'success': resultado['success'],
+            'tipo': 'anuncio_comercial',
+            'fecha': fecha_hoy,
+            'telegram_response': resultado
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error: {str(e)}'
+        }), 500
+
+
+# ===================================
 # 🧪 ENDPOINTS DE PRUEBA
 # ===================================
 
@@ -438,7 +465,7 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'telegram',
-        'version': 'V2.1 - Con IA al vuelo',
+        'version': 'V2.2 - Con anuncio comercial',
         'token_configurado': bool(TELEGRAM_BOT_TOKEN),
         'bot_activo': bot_ok,
         'bot_info': bot_info,
@@ -447,6 +474,7 @@ def test():
             '/api/telegram/test',
             '/api/telegram/enviar-prueba',
             '/api/telegram/publicar-prediccion-diaria',
+            '/api/telegram/publicar-anuncio',
             '/api/telegram/diagnostico'
         ]
     })
@@ -456,9 +484,10 @@ def test():
 def enviar_prueba():
     """Envía un mensaje de prueba al canal."""
     try:
-        mensaje = "🦉 <b>Test desde Didasko AI V2.1</b>\n\n"
+        mensaje = "🦉 <b>Test desde Didasko AI V2.2</b>\n\n"
         mensaje += "✅ Bot funcionando con IA integrada\n"
-        mensaje += "🤖 NVIDIA Llama activo\n\n"
+        mensaje += "🤖 NVIDIA Llama activo\n"
+        mensaje += "📢 Sistema de anuncios listo\n\n"
         mensaje += f"🕒 {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
         mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>"
         
