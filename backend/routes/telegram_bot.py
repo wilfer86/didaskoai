@@ -1,10 +1,11 @@
 # ===================================
-# telegram_bot.py - Bot Didasko V1.0
+# telegram_bot.py - Bot Didasko V2.0
 # ===================================
-# Bot Telegram para publicar en @DidaskoDeportes
-# - Publica 1 predicción al día a las 8 AM
-# - Incluye noticias RSS de fútbol
-# - No interfiere con el sitio web
+# MEJORAS V2.0:
+# - Siempre publica algo relevante
+# - Sistema de 3 niveles de respaldo
+# - Busca partidos en próximos días si hoy no hay
+# - Publica noticias deportivas si no hay partidos
 # ===================================
 
 import os
@@ -23,12 +24,10 @@ telegram_bp = Blueprint('telegram', __name__)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHANNEL = '@DidaskoDeportes'
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
-
-# URL del sitio web (para el link en las publicaciones)
 DIDASKO_URL = 'https://didasko-ai.onrender.com'
 
 # ===================================
-# 📰 NOTICIAS RSS POR LIGA
+# 📰 NOTICIAS RSS
 # ===================================
 
 RSS_FEEDS = {
@@ -41,8 +40,18 @@ RSS_FEEDS = {
     'default': 'https://e00-marca.uecdn.es/rss/futbol.xml'
 }
 
+FRASES_MOTIVACIONALES = [
+    "⚽ El fútbol es más que un deporte, es pasión pura.",
+    "🏆 Los grandes campeones se forjan en los momentos difíciles.",
+    "🔥 Cada partido es una oportunidad para hacer historia.",
+    "💪 El talento gana partidos, el trabajo en equipo gana campeonatos.",
+    "🎯 En el fútbol, como en la vida, cada segundo cuenta.",
+    "⭐ Los sueños se cumplen con esfuerzo y dedicación.",
+    "🦉 Con inteligencia artificial, todo es posible."
+]
+
 # ===================================
-# 🎯 FUNCIONES PRINCIPALES
+# 🎯 FUNCIONES AUXILIARES
 # ===================================
 
 def enviar_mensaje_telegram(texto, canal=TELEGRAM_CHANNEL):
@@ -58,7 +67,6 @@ def enviar_mensaje_telegram(texto, canal=TELEGRAM_CHANNEL):
             'parse_mode': 'HTML',
             'disable_web_page_preview': False
         }
-        
         response = requests.post(url, json=payload, timeout=10)
         
         if response.status_code == 200:
@@ -72,10 +80,7 @@ def enviar_mensaje_telegram(texto, canal=TELEGRAM_CHANNEL):
 def obtener_noticias_liga(liga_nombre, limite=3):
     """Obtiene las últimas noticias de una liga desde RSS."""
     try:
-        # Buscar el feed más apropiado
         feed_url = RSS_FEEDS.get(liga_nombre, RSS_FEEDS['default'])
-        
-        # Parsear el RSS
         feed = feedparser.parse(feed_url)
         
         noticias = []
@@ -83,90 +88,151 @@ def obtener_noticias_liga(liga_nombre, limite=3):
             titulo = entry.get('title', '').strip()
             if titulo:
                 noticias.append(f"• {titulo}")
-        
         return noticias
     except Exception as e:
         print(f"⚠️ Error obteniendo noticias: {e}")
         return []
 
 
-def elegir_partido_destacado():
-    """Elige el partido más importante del día desde el Profeta."""
+def obtener_noticias_generales(limite=5):
+    """Obtiene noticias deportivas generales."""
     try:
-        # Llamar al endpoint interno del Profeta
-        response = requests.get(f"{DIDASKO_URL}/api/profeta/hoy", timeout=15)
+        feed = feedparser.parse(RSS_FEEDS['default'])
+        noticias = []
+        for entry in feed.entries[:limite]:
+            titulo = entry.get('title', '').strip()
+            link = entry.get('link', '')
+            if titulo:
+                if link:
+                    noticias.append(f"• <a href='{link}'>{titulo}</a>")
+                else:
+                    noticias.append(f"• {titulo}")
+        return noticias
+    except Exception as e:
+        print(f"⚠️ Error noticias generales: {e}")
+        return []
+
+
+def buscar_partidos_dia(fecha_str):
+    """Busca partidos en una fecha específica desde TheSportsDB."""
+    try:
+        # API pública de TheSportsDB
+        url = f"https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d={fecha_str}&s=Soccer"
+        response = requests.get(url, timeout=15)
         
         if response.status_code != 200:
-            return None
+            return []
         
         data = response.json()
-        
-        if not data.get('success') or not data.get('partidos'):
-            return None
-        
-        partidos = data['partidos']
-        
-        # Prioridad de ligas (más importante primero)
-        prioridades = [
-            'UEFA Champions League',
-            'LaLiga', 'Spanish La Liga',
-            'Premier League', 'English Premier League',
-            'Serie A', 'Italian Serie A',
-            'Bundesliga', 'German Bundesliga',
-            'Copa Libertadores',
-            'Ligue 1', 'French Ligue 1',
-            'Copa Sudamericana',
-            'Colombia Categoría Primera A',
-            'Copa BetPlay'
-        ]
-        
-        # Buscar el partido de la liga más prioritaria
-        for liga_prio in prioridades:
-            for partido in partidos:
-                if liga_prio.lower() in partido.get('strLeague', '').lower():
-                    return partido
-        
-        # Si no hay ninguno prioritario, devolver el primero
-        return partidos[0] if partidos else None
-        
+        eventos = data.get('events', [])
+        return eventos if eventos else []
     except Exception as e:
-        print(f"⚠️ Error eligiendo partido: {e}")
+        print(f"⚠️ Error buscando partidos {fecha_str}: {e}")
+        return []
+
+
+def elegir_mejor_partido(partidos):
+    """De una lista de partidos, elige el más importante por prioridad."""
+    if not partidos:
         return None
+    
+    prioridades = [
+        'UEFA Champions League',
+        'UEFA Europa League',
+        'LaLiga', 'Spanish La Liga', 'Spanish La Liga',
+        'Premier League', 'English Premier League',
+        'Serie A', 'Italian Serie A',
+        'Bundesliga', 'German Bundesliga',
+        'Copa Libertadores',
+        'Ligue 1', 'French Ligue 1',
+        'Copa Sudamericana',
+        'Colombia Categoría Primera A',
+        'Copa BetPlay',
+        'Brazilian Serie A',
+        'Argentine Primera División'
+    ]
+    
+    # Buscar por prioridad
+    for liga_prio in prioridades:
+        for partido in partidos:
+            liga = partido.get('strLeague', '')
+            if liga_prio.lower() in liga.lower():
+                return partido
+    
+    # Si no hay prioritario, devolver el primero
+    return partidos[0]
 
 
-def generar_prediccion_para_partido(evento_id):
-    """Llama al endpoint interno para generar la predicción IA."""
+def buscar_mejor_partido_disponible():
+    """
+    Sistema de 3 niveles:
+    1. Partido de hoy
+    2. Partido de mañana
+    3. Partido de pasado mañana
+    Devuelve (partido, dias_desde_hoy) o (None, -1)
+    """
+    hoy = datetime.now()
+    
+    for dias_adelante in range(0, 4):  # hoy, +1, +2, +3
+        fecha = hoy + timedelta(days=dias_adelante)
+        fecha_str = fecha.strftime('%Y-%m-%d')
+        
+        print(f"🔍 Buscando partidos para: {fecha_str}")
+        partidos = buscar_partidos_dia(fecha_str)
+        
+        if partidos:
+            mejor = elegir_mejor_partido(partidos)
+            if mejor:
+                print(f"✅ Encontrado: {mejor.get('strEvent')} en {fecha_str}")
+                return (mejor, dias_adelante)
+    
+    return (None, -1)
+
+
+def buscar_prediccion_cache(evento_id):
+    """Busca predicción en cache de Supabase."""
     try:
-        # NOTA: Este endpoint requiere sesión, así que usaremos directamente Supabase
         client = get_client()
         if not client:
             return None
         
-        # Buscar en cache primero
         result = client.table('predicciones').select('*').eq('partido_id', str(evento_id)).execute()
         
         if result.data and len(result.data) > 0:
             return result.data[0]
-        
         return None
     except Exception as e:
-        print(f"⚠️ Error generando predicción: {e}")
+        print(f"⚠️ Error cache predicción: {e}")
         return None
 
 
-def formatear_publicacion(partido, prediccion, noticias):
-    """Crea el mensaje HTML formateado para Telegram."""
-    fecha_hoy = datetime.now().strftime('%d de %B de %Y')
+# ===================================
+# 📝 FORMATEADORES DE MENSAJE
+# ===================================
+
+def formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante=0):
+    """Crea el mensaje HTML para publicar un partido."""
     
     equipo_local = partido.get('strHomeTeam', 'Local')
     equipo_visitante = partido.get('strAwayTeam', 'Visitante')
-    liga = partido.get('strLeague', 'Liga')
+    liga = partido.get('strLeague', 'Fútbol')
     hora = partido.get('strTime', '')[:5] if partido.get('strTime') else '??:??'
     estadio = partido.get('strVenue', '')
+    fecha_partido = partido.get('dateEvent', '')
     
-    # Construir el mensaje
-    mensaje = f"🔮 <b>PREDICCIÓN DEL DÍA</b>\n"
-    mensaje += f"📅 {fecha_hoy}\n\n"
+    # Determinar título según cuándo se juega
+    if dias_adelante == 0:
+        titulo = "🔮 <b>PREDICCIÓN DEL DÍA</b>"
+        fecha_txt = "📅 HOY"
+    elif dias_adelante == 1:
+        titulo = "⚽ <b>PARTIDO DESTACADO - MAÑANA</b>"
+        fecha_txt = "📅 MAÑANA"
+    else:
+        titulo = "⚽ <b>PARTIDO DESTACADO PRÓXIMO</b>"
+        fecha_txt = f"📅 {fecha_partido}"
+    
+    mensaje = f"{titulo}\n"
+    mensaje += f"{fecha_txt}\n\n"
     mensaje += f"⚽ <b>{equipo_local}</b> vs <b>{equipo_visitante}</b>\n"
     mensaje += f"🏆 {liga}\n"
     mensaje += f"🕒 Hora: {hora}\n"
@@ -176,18 +242,18 @@ def formatear_publicacion(partido, prediccion, noticias):
     
     mensaje += "\n"
     
-    # Predicción IA
+    # Predicción IA (si existe)
     if prediccion and prediccion.get('prediccion_texto'):
         mensaje += "━━━━━━━━━━━━━━━\n"
         mensaje += f"🎯 <b>Ganador probable:</b> {prediccion.get('ganador_predicho', 'N/A')}\n"
         mensaje += f"📊 <b>Confianza:</b> {prediccion.get('confianza', 60)}%\n"
         mensaje += "━━━━━━━━━━━━━━━\n\n"
     else:
-        mensaje += "🔮 <i>Genera la predicción completa en Didasko AI</i>\n\n"
+        mensaje += "🔮 <i>Obtén la predicción IA completa en Didasko AI</i>\n\n"
     
     # Noticias
     if noticias:
-        mensaje += f"📰 <b>NOTICIAS DE {liga.upper()}:</b>\n"
+        mensaje += f"📰 <b>ÚLTIMAS NOTICIAS:</b>\n"
         for noticia in noticias:
             mensaje += f"{noticia}\n"
         mensaje += "\n"
@@ -201,61 +267,86 @@ def formatear_publicacion(partido, prediccion, noticias):
     return mensaje
 
 
+def formatear_publicacion_solo_noticias(noticias):
+    """Cuando no hay partidos disponibles, publica noticias del día."""
+    import random
+    frase = random.choice(FRASES_MOTIVACIONALES)
+    fecha_hoy = datetime.now().strftime('%d/%m/%Y')
+    
+    mensaje = "🦉 <b>DIDASKO DEPORTES</b>\n"
+    mensaje += f"📅 {fecha_hoy}\n\n"
+    mensaje += f"{frase}\n\n"
+    
+    if noticias:
+        mensaje += "📰 <b>NOTICIAS DEPORTIVAS DEL DÍA:</b>\n\n"
+        for noticia in noticias:
+            mensaje += f"{noticia}\n\n"
+    
+    mensaje += "━━━━━━━━━━━━━━━\n"
+    mensaje += "🦉 <b>Visita Didasko AI:</b>\n"
+    mensaje += "🔮 Predicciones IA con NVIDIA\n"
+    mensaje += "⚽ Análisis de partidos\n"
+    mensaje += "🏆 Todas las ligas del mundo\n\n"
+    mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
+    mensaje += "#DidaskoAI #Futbol #Deportes ⚽🔮"
+    
+    return mensaje
+
+
 # ===================================
-# 🎯 ENDPOINT PARA PUBLICAR
+# 🎯 ENDPOINT PRINCIPAL
 # ===================================
 
 @telegram_bp.route('/publicar-prediccion-diaria', methods=['GET', 'POST'])
 def publicar_prediccion_diaria():
     """
-    Endpoint que publica la predicción del día en el canal.
-    Se llama automáticamente cada día a las 8 AM.
+    Publica contenido diario con sistema de 3 niveles:
+    1. Partido de hoy con predicción
+    2. Partido próximo (mañana, +2, +3 días)
+    3. Noticias deportivas del día
     """
     try:
-        # Verificar que hay token
         if not TELEGRAM_BOT_TOKEN:
             return jsonify({
                 'success': False,
                 'error': 'TELEGRAM_BOT_TOKEN no configurado en Render'
             }), 500
         
-        # 1. Elegir partido destacado del día
-        partido = elegir_partido_destacado()
+        # NIVEL 1 y 2: Buscar mejor partido disponible (hoy o próximos días)
+        partido, dias_adelante = buscar_mejor_partido_disponible()
         
-        if not partido:
-            # No hay partidos hoy, publicar mensaje alternativo
-            mensaje = "🦉 <b>DIDASKO DEPORTES</b>\n\n"
-            mensaje += "📅 Hoy no hay partidos destacados de las ligas prioritarias.\n\n"
-            mensaje += "⚽ Visita Didasko AI para ver partidos de otras ligas:\n"
-            mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>\n\n"
-            mensaje += "#DidaskoAI #Futbol"
+        if partido:
+            # ✅ Hay partido disponible
+            evento_id = partido.get('idEvent')
+            prediccion = buscar_prediccion_cache(evento_id)
+            liga = partido.get('strLeague', 'default')
+            noticias = obtener_noticias_liga(liga, limite=3)
             
+            mensaje = formatear_publicacion_partido(partido, prediccion, noticias, dias_adelante)
             resultado = enviar_mensaje_telegram(mensaje)
+            
             return jsonify({
-                'success': True,
-                'mensaje': 'Publicado mensaje alternativo (sin partidos)',
+                'success': resultado['success'],
+                'nivel': 1 if dias_adelante == 0 else 2,
+                'partido': f"{partido.get('strHomeTeam')} vs {partido.get('strAwayTeam')}",
+                'liga': liga,
+                'dias_adelante': dias_adelante,
+                'con_prediccion': prediccion is not None,
+                'noticias_incluidas': len(noticias),
                 'telegram_response': resultado
             })
         
-        # 2. Buscar predicción cacheada
-        evento_id = partido.get('idEvent')
-        prediccion = generar_prediccion_para_partido(evento_id)
+        # NIVEL 3: No hay partidos - Publicar solo noticias
+        print("⚠️ No hay partidos disponibles - Publicando noticias generales")
+        noticias = obtener_noticias_generales(limite=5)
         
-        # 3. Obtener noticias de la liga
-        liga = partido.get('strLeague', 'default')
-        noticias = obtener_noticias_liga(liga, limite=3)
-        
-        # 4. Formatear mensaje
-        mensaje = formatear_publicacion(partido, prediccion, noticias)
-        
-        # 5. Enviar al canal
+        mensaje = formatear_publicacion_solo_noticias(noticias)
         resultado = enviar_mensaje_telegram(mensaje)
         
         return jsonify({
             'success': resultado['success'],
-            'partido': f"{partido.get('strHomeTeam')} vs {partido.get('strAwayTeam')}",
-            'liga': liga,
-            'con_prediccion': prediccion is not None,
+            'nivel': 3,
+            'mensaje': 'Publicado con noticias generales',
             'noticias_incluidas': len(noticias),
             'telegram_response': resultado
         })
@@ -268,14 +359,13 @@ def publicar_prediccion_diaria():
 
 
 # ===================================
-# 🧪 ENDPOINT DE PRUEBA
+# 🧪 ENDPOINTS DE PRUEBA
 # ===================================
 
 @telegram_bp.route('/test', methods=['GET'])
 def test():
     """Endpoint de prueba del bot."""
     try:
-        # Verificar token con /getMe
         response = requests.get(f"{TELEGRAM_API}/getMe", timeout=5)
         bot_ok = response.status_code == 200
         bot_info = response.json() if bot_ok else None
@@ -286,14 +376,16 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'telegram',
-        'version': 'V1.0',
+        'version': 'V2.0',
         'token_configurado': bool(TELEGRAM_BOT_TOKEN),
         'bot_activo': bot_ok,
         'bot_info': bot_info,
         'canal': TELEGRAM_CHANNEL,
         'endpoints': [
             '/api/telegram/test',
-            '/api/telegram/publicar-prediccion-diaria'
+            '/api/telegram/enviar-prueba',
+            '/api/telegram/publicar-prediccion-diaria',
+            '/api/telegram/diagnostico'
         ]
     })
 
@@ -302,9 +394,9 @@ def test():
 def enviar_prueba():
     """Envía un mensaje de prueba al canal."""
     try:
-        mensaje = "🦉 <b>Test desde Didasko AI</b>\n\n"
+        mensaje = "🦉 <b>Test desde Didasko AI V2.0</b>\n\n"
         mensaje += "✅ El bot está funcionando correctamente\n"
-        mensaje += "⚽ Pronto empezarán las predicciones diarias\n\n"
+        mensaje += "⚽ Sistema mejorado activado\n\n"
         mensaje += f"🕒 Enviado: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
         mensaje += f"👉 <a href='{DIDASKO_URL}'>didasko-ai.onrender.com</a>"
         
@@ -312,3 +404,32 @@ def enviar_prueba():
         return jsonify(resultado)
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@telegram_bp.route('/diagnostico', methods=['GET'])
+def diagnostico():
+    """Diagnostica qué partidos hay disponibles en próximos días."""
+    try:
+        hoy = datetime.now()
+        resultado = {
+            'fecha_servidor': hoy.strftime('%Y-%m-%d %H:%M:%S'),
+            'dias_analizados': []
+        }
+        
+        for dias in range(0, 4):
+            fecha = hoy + timedelta(days=dias)
+            fecha_str = fecha.strftime('%Y-%m-%d')
+            partidos = buscar_partidos_dia(fecha_str)
+            
+            mejor = elegir_mejor_partido(partidos) if partidos else None
+            
+            resultado['dias_analizados'].append({
+                'fecha': fecha_str,
+                'dias_desde_hoy': dias,
+                'total_partidos': len(partidos),
+                'mejor_partido': f"{mejor.get('strHomeTeam')} vs {mejor.get('strAwayTeam')} ({mejor.get('strLeague')})" if mejor else None
+            })
+        
+        return jsonify(resultado)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
