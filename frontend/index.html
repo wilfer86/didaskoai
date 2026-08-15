@@ -6,7 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="assets/logo/favicon_io/favicon.ico">
     <link rel="manifest" href="pwa/manifest.json">
-        <!-- 🍎 PWA para iOS (iPhone/iPad) -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/bienvenida.css">
+    <link rel="stylesheet" href="css/secciones.css">
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/animaciones.css">
+    
+    <!-- 🍎 PWA para iOS (iPhone/iPad) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Didasko AI">
@@ -18,14 +24,10 @@
     <link rel="apple-touch-icon" href="assets/logo/favicon_io/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/logo/favicon_io/apple-touch-icon.png">
     
-    <!-- Splash screens iOS (opcional pero recomendado) -->
+    <!-- Windows Tile -->
     <meta name="msapplication-TileColor" content="#0a1e5c">
     <meta name="msapplication-TileImage" content="assets/logo/favicon_io/android-chrome-192x192.png">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/bienvenida.css">
-    <link rel="stylesheet" href="css/secciones.css">
-    <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="css/animaciones.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         window.MathJax = {
@@ -106,20 +108,20 @@
 
     <!-- 📁 CARPETA PESTAÑAS TIPO (Solo visibles en PC) -->
     <nav class="pestanas-web">
-        <button onclick="irA('chat')" class="tab-link active">🐢 Chat (Principal)</button>
+        <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
         <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
-        <button onclick="irA('profeta')" class="tab-link">🌐 Profeta Deportivo</button>
+        <button onclick="irA('profeta')" class="tab-link">⚽ Profeta Deportivo</button>
         <button onclick="irA('apoyar')" class="tab-link">💛 Misión y Visión</button>
         <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
     </nav>
 
-    <!-- 🐢 BIENVENIDA (Solo visible en MÓVIL) -->
+    <!-- 🦉 BIENVENIDA (Solo visible en MÓVIL) -->
     <section id="bienvenida" class="pantalla">
         <div class="bienvenida-contenedor">
             <img src="assets/logo/buho-columna.png" class="logo-principal" alt="Didasko AI">
             <h1 class="titulo-principal">Didasko AI</h1>
-            <p class="subtitulo">¡Bienvenido a tu tutor con IA! 🐢<br>Aprende, crea y descubre.</p>
+            <p class="subtitulo">¡Bienvenido a tu tutor con IA! 🦉<br>Aprende, crea y descubre.</p>
             <div class="menu-principal">
                 <button onclick="irA('chat')">
                     <img src="assets/iconos-app/icono-chat.png" class="icono-app">
@@ -134,7 +136,7 @@
                     <span class="texto-btn">Analizar Foto</span>
                 </button>
                 <button onclick="irA('profeta')">
-                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">🌐</span>
+                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">⚽</span>
                     <span class="texto-btn">Profeta Deportivo</span>
                 </button>
                 <button onclick="irA('apoyar')">
@@ -153,7 +155,7 @@
     <section id="chat" class="pantalla">
         <div class="header-seccion solo-movil">
             <button onclick="volverInicio()">⬅️</button>
-            <h2>🐢 Chatea con la IA de Didasko</h2>
+            <h2>🦉 Chatea con la IA de Didasko</h2>
         </div>
         <div id="chat-mensajes" class="contenido"></div>
         <div class="area-input">
@@ -358,7 +360,7 @@
                     Cada usuario, cada aporte, cada mensaje de apoyo me recuerdan que <strong>la transformación es posible</strong>. Didasko AI existe gracias a personas como tú.
                 </p>
                 <div class="mvc-empresa">
-                    🐢 <strong>Didasko AI</strong> + Comunidad
+                    🦉 <strong>Didasko AI</strong> + Comunidad
                 </div>
             </div>
 
@@ -508,7 +510,7 @@
 
     <script>
         function cerrarSesionDidasko() {
-            if (confirm('🐢 ¿Seguro que quieres cerrar sesión?')) {
+            if (confirm('🦉 ¿Seguro que quieres cerrar sesión?')) {
                 cerrarSesion();
             }
         }
