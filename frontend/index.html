@@ -10,347 +10,28 @@
     <link rel="stylesheet" href="css/bienvenida.css">
     <link rel="stylesheet" href="css/secciones.css">
     <link rel="stylesheet" href="css/responsive.css">
-    <link rel="stylesheet" href="css/animaciones.css">
+    <link rel="stylesheet" href="css/animations.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                processEscapes: true,
-                processEnvironments: true
-            },
-            options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                ignoreHtmlClass: 'tex2jax_ignore',
-                processHtmlClass: 'tex2jax_process'
-            },
-            svg: { fontCache: 'global' }
-        };
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true,
+          processEnvironments: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+          ignoreHtmlClass: 'tex2jax_ignore',
+          processHtmlClass: 'tex2jax_process'
+        },
+        svg: { fontCache: 'global' }
+      };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        body { visibility: hidden; }
-
-        .tab-salir {
-            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
-            color: white !important;
-            font-weight: 600 !important;
-        }
-
-        .tab-salir:hover {
-            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4) !important;
-        }
-
-        .btn-salir-movil {
-            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
-            border: 3px solid #ff6b5c !important;
-        }
-
-        .btn-salir-movil:hover {
-            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
-            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4) !important;
-        }
-
-        .btn-salir-movil .icono-app {
-            width: 60px;
-            height: 60px;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            font-size: 45px;
-            background: transparent !important;
-        }
-
-        .btn-salir-movil .texto-btn {
-            color: white !important;
-            font-weight: 700;
-        }
-    </style>
-    <script>
-        (function() {
-            fetch('/api/auth/me', { credentials: 'include' })
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.success || !data.logueado) {
-                        window.location.replace('/login.html');
-                    } else {
-                        localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
-                        document.body.style.visibility = 'visible';
-                    }
-                })
-                .catch(() => {
-                    window.location.replace('/login.html');
-                });
-        })();
-    </script>
-</head>
-<body>
-
-    <!-- 📁 CARPETA PESTAÑAS TIPO (Solo visibles en PC) -->
-    <nav class="pestanas-web">
-        <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
-        <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
-        <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
-        <button onclick="irA('profeta')" class="tab-link">🌐 Profeta Deportivo</button>
-        <button onclick="irA('apoyar')" class="tab-link">💛 Misión y Visión</button>
-        <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
-    </nav>
-
-    <!-- 🦉 BIENVENIDA (Solo visible en MÓVIL) -->
-    <section id="bienvenida" class="pantalla">
-        <div class="bienvenida-contenedor">
-            <img src="assets/logo/buho-columna.png" class="logo-principal" alt="Didasko AI">
-            <h1 class="titulo-principal">Didasko AI</h1>
-            <p class="subtitulo">¡Bienvenido a tu tutor con IA! 🦉<br>Aprende, crea y descubre.</p>
-            <div class="menu-principal">
-                <button onclick="irA('chat')">
-                    <img src="assets/iconos-app/icono-chat.png" class="icono-app">
-                    <span class="texto-btn">Charlar</span>
-                </button>
-                <button onclick="irA('imagen')">
-                    <img src="assets/iconos-app/icono-imagen.png" class="icono-app">
-                    <span class="texto-btn">Crear Imagen</span>
-                </button>
-                <button onclick="irA('vision')">
-                    <img src="assets/iconos-app/icono-vision.png" class="icono-app">
-                    <span class="texto-btn">Analizar Foto</span>
-                </button>
-                <button onclick="irA('profeta')">
-                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">🌐</span>
-                    <span class="texto-btn">Profeta Deportivo</span>
-                </button>
-                <button onclick="irA('apoyar')">
-                    <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
-                    <span class="texto-btn">Apoyar</span>
-                </button>
-                <button onclick="cerrarSesionDidasko()" class="btn-salir-movil">
-                    <span class="icono-app">🚪</span>
-                    <span class="texto-btn">Salir</span>
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- 💬 SECCIÓN CHAT -->
-    <section id="chat" class="pantalla">
-        <div class="header-seccion solo-movil">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🦉 Chatea con la IA de Didasko</h2>
-        </div>
-        <div id="chat-mensajes" class="contenido"></div>
-        <div class="area-input">
-            <img src="assets/logo/buho-mascota.png" class="mascota">
-            <input type="text" id="chat-input" placeholder="Escribe tu pregunta...">
-            <button onclick="enviarMensaje()">▶️</button>
-        </div>
-    </section>
-
-    <!-- 🖼️ SECCIÓN IMAGEN -->
-    <section id="imagen" class="pantalla">
-        <div class="header-seccion solo-movil">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🖼️ Crear / Editar Imagen</h2>
-        </div>
-
-        <div class="selector-modo">
-            <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
-            <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">✏️ Editar</button>
-        </div>
-
-        <div id="imagen-resultado" class="contenido centrado"></div>
-
-        <div class="selector-formato" id="selector-formato">
-            <span class="formato-label">Formato:</span>
-            <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬛ 1:1</button>
-            <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
-            <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱 9:16</button>
-        </div>
-
-        <input type="file" id="imagen-editar-file" accept="image/*" style="display:none;">
-
-        <div class="area-input">
-            <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none;">📷</button>
-            <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
-            <button onclick="procesarImagen()">▶️</button>
-        </div>
-    </section>
-
-    <!-- 🔍 SECCIÓN VISIÓN -->
-    <section id="vision" class="pantalla">
-        <div class="header-seccion solo-movil">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🔍 Analizar Foto</h2>
-        </div>
-        <div id="vision-resultado" class="contenido centrado"></div>
-        <div class="area-input">
-            <input type="file" id="vision-file" accept="image/*" style="display:none;">
-            <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none;">
-            <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
-            <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📷</button>
-            <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
-            <button onclick="analizarImagen()">▶️</button>
-        </div>
-    </section>
-
-    <!-- 🌐 SECCIÓN PROFETA DEPORTIVO -->
-    <section id="profeta" class="pantalla">
-        <div class="header-seccion solo-movil">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>🌐 Profeta Deportivo</h2>
-        </div>
-        <div id="profeta-resultado" class="contenido centrado"></div>
-    </section>
-
-    <!-- 💛 SECCIÓN MISIÓN, VISIÓN, COMPROMISO -->
-    <section id="apoyar" class="pantalla">
-        <div class="header-seccion solo-movil">
-            <button onclick="volverInicio()">⬅️</button>
-            <h2>💛 Misión, Visión y Compromiso</h2>
-        </div>
-
-        <div class="contenido mvc-contenido">
-
-            <!-- 🎯 MISIÓN -->
-            <div class="mvc-bloque mvc-mision">
-                <div class="icono-mvc">🎯</div>
-                <h2 class="mvc-titulo">Nuestra Misión</h2>
-                <p class="mvc-texto">
-                    En <strong>Didasko AI</strong> creemos que la inteligencia artificial no debe ser un privilegio de pocos, sino una herramienta al alcance de todos.
-                </p>
-
-                <div class="mvc-servicios">
-                    <h3>Con Didasko puedes:</h3>
-                    <ul>
-                        <li>💬 <strong>Chat inteligente:</strong> Resuelve tareas escolares y universitarias, redacta ensayos, discursos y textos.</li>
-                        <li>🖼️ <strong>Crear imágenes:</strong> Genera arte visual desde texto con calidad profesional (8/10 en el mercado actual).</li>
-                        <li>🔍 <strong>Analizar fotos:</strong> Resuelve dudas académicas visuales y analiza imágenes al instante.</li>
-                        <li>🌐 <strong>Profeta Deportivo:</strong> Predicciones deportivas con IA para los amantes del fútbol.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- 🌟 VISIÓN -->
-            <div class="mvc-bloque mvc-vision">
-                <div class="icono-mvc">🌟</div>
-                <h2 class="mvc-titulo">Nuestra Visión</h2>
-                <p class="mvc-texto">
-                    Convertir a <strong>Didasko AI</strong> en una plataforma educativa y creativa <strong>100% accesible en Colombia y Latinoamérica</strong>.
-                </p>
-
-                <div class="mvc-suenos">
-                    <h3>Soñamos con un futuro donde:</h3>
-                    <ul>
-                        <li>📚 Ningún estudiante se queda sin resolver una tarea por falta de recursos.</li>
-                        <li>🎨 Todo creador de contenido tiene herramientas de nivel profesional gratis.</li>
-                        <li>💡 Las ideas de cualquier emprendedor puedan materializarse sin costos elevados.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- 💛 COMPROMISO -->
-            <div class="mvc-bloque mvc-compromiso">
-                <div class="icono-mvc">💛</div>
-                <h2 class="mvc-titulo">Nuestro Compromiso</h2>
-                <p class="mvc-texto mvc-historia">
-                    <strong>Didasko AI</strong> nace de una historia real de superación y propósito.
-                </p>
-
-                <p class="mvc-texto">
-                    Soy <strong>Wilfer</strong>, fundador de este proyecto. Me dedico al <strong>reciclaje</strong>, y hace <strong>10 años</strong> decidí dejar las drogas.
-                </p>
-
-                <p class="mvc-texto mvc-destacado">
-                    <strong>Didasko AI es el resultado tangible de ese proceso:</strong> una prueba de que la voluntad, el aprendizaje continuo y las oportunidades pueden transformar cualquier vida.
-                </p>
-
-                <p class="mvc-texto">
-                    Hoy te ofrezco esta herramienta <strong>gratis</strong> porque sé lo que significa no tener recursos. Pero mantenerla activa requiere apoyo.
-                </p>
-
-                <div class="mvc-apoyo-caja">
-                    <h3>💛 Si Didasko te ha ayudado, considera apoyarme:</h3>
-                    <ul>
-                        <li>✅ <strong>Aporte voluntario desde $4.000 COP en adelante</strong></li>
-                        <li>✅ <strong>Tu apoyo mantiene la plataforma gratis para quienes más la necesitan</strong></li>
-                        <li>✅ <strong>Como agradecimiento, recibes acceso VIP a Predicciones Deportivas Ilimitadas por 30 días</strong></li>
-                    </ul>
-                    <p class="mvc-frase">
-                        "No es un pago, es un acto de comunidad. Cada aporte se convierte en más días de servicio activo para estudiantes, creadores y soñadores."
-                    </p>
-                </div>
-            </div>
-
-            <!-- 💳 MÉTODOS DE PAGO -->
-            <div class="mvc-bloque mvc-metodos">
-                <div class="icono-mvc">💳</div>
-                <h2 class="mvc-titulo">Métodos de Apoyo</h2>
-                <p class="mvc-texto-centro">Elige el que más te convenga:</p>
-
-                <div class="metodos-grid">
-
-                    <!-- Nequi -->
-                    <div class="metodo-card metodo-nequi" onclick="copiarDato('3171547065', 'Nequi')">
-                        <div class="metodo-logo">📱</div>
-                        <h3>Nequi</h3>
-                        <p class="metodo-dato">3171547065</p>
-                        <p class="metodo-hint">👆 Toca para copiar</p>
-                    </div>
-
-                    <!-- Daviplata -->
-                    <div class="metodo-card metodo-daviplata" onclick="copiarDato('3171547065', 'Daviplata')">
-                        <div class="metodo-logo">💳</div>
-                        <h3>Daviplata</h3>
-                        <p class="metodo-dato">3171547065</p>
-                        <p class="metodo-hint">👆 Toca para copiar</p>
-                    </div>
-
-                    <!-- Bre-B -->
-                    <div class="metodo-card metodo-breb" onclick="copiarDato('3171547065', 'Bre-B')">
-                        <div class="metodo-logo">🔄</div>
-                        <h3>Bre-B</h3>
-                        <p class="metodo-dato">3171547065</p>
-                        <p class="metodo-hint">👆 Toca para copiar</p>
-                    </div>
-
-                    <!-- PayPal -->
-                    <div class="metodo-card metodo-paypal" onclick="copiarDato('cortesandres868@gmail.com', 'PayPal')">
-                        <div class="metodo-logo">💵</div>
-                        <h3>PayPal</h3>
-                        <p class="metodo-dato">cortesandres868@gmail.com</p>
-                        <p class="metodo-hint">👆 Toca para copiar</p>
-                    </div>
-
-                </div>
-
-                <!-- WhatsApp para confirmar -->
-                <div class="mvc-whatsapp">
-                    <h3>📱 Después de tu aporte, contáctame:</h3>
-                    <button onclick="contactarWhatsAppVIP()" class="btn-whatsapp-mvc">
-                        💬 Escribir por WhatsApp
-                    </button>
-                    <p class="mvc-whatsapp-numero">+57 317 154 7065</p>
-                </div>
-            </div>
-
-            <!-- 🙏 AGRADECIMIENTO -->
-            <div class="mvc-bloque mvc-gracias">
-                <div class="mvc-icono-grande">🙏</div>
-                <h2 class="mvc-titulo-gracias">Gracias por creer en este proyecto.</h2>
-                <p class="mvc-texto-gracias">
-                    Cada usuario, cada aporte, cada mensaje de apoyo me recuerdan que <strong>la transformación es posible</strong>. Didasko AI existe gracias a personas como tú.
-                </p>
-                <div class="mvc-empresa">
-                    🦉 <strong>Didasko AI</strong> + Comunidad
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-    <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
+        <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
     <a href="https://t.me/DidaskoProfetaBot" 
        target="_blank" 
        id="btn-bot-flotante" 
@@ -479,6 +160,324 @@
             }
         }
     </style>
+        body { visibility: hidden; }
+        
+        .tab-salir {
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+            color: white !important;
+            font-weight: 600 !important;
+        }
+        
+        .tab-salir:hover {
+            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4) !important;
+        }
+        
+        .btn-salir-movil {
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+            border: 3px solid #ff6b5c !important;
+        }
+        
+        .btn-salir-movil:hover {
+            background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4) !important;
+        }
+        
+        .btn-salir-movil .icono-app {
+            width: 60px;
+            height: 60px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            background: transparent !important;
+        }
+        
+        .btn-salir-movil .texto-boton {
+            color: white !important;
+            font-weight: 700;
+        }
+    </style>
+    <script>
+    (function() {
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.logueado) {
+                    window.location.replace('/login.html');
+                } else {
+                    localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
+                    document.body.style.visibility = 'visible';
+                }
+            })
+            .catch(() => {
+                window.location.replace('/login.html');
+            });
+    })();
+    </script>
+</head>
+<body>
+
+    <!-- 📁 PESTAÑAS TIPO FOLDER (Solo visibles en PC) -->
+    <nav class="tabs-web">
+        <button onclick="irA('chat')" class="tab-link active">🦉 Chat (Principal)</button>
+        <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
+        <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
+        <button onclick="irA('profeta')" class="tab-link">⚽ Profeta Deportivo</button>
+        <button onclick="irA('apoyar')" class="tab-link"> 💛 Misión y Visión</button>
+        <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
+    </nav>
+
+    <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
+    <section id="bienvenida" class="pantalla">
+        <div class="bienvenida-container">
+            <img src="assets/logo/buho-columna.png" class="logo-principal" alt="Didasko AI">
+            <h1 class="titulo-principal">Didasko AI</h1>
+            <p class="subtitulo">¡Bienvenido a tu tutor con IA! 🦉<br>Aprende, crea y descubre.</p>
+            <div class="menu-principal">
+                <button onclick="irA('chat')">
+                    <img src="assets/iconos-app/icono-chat.png" class="icono-app">
+                    <span class="texto-boton">Chat</span>
+                </button>
+                <button onclick="irA('imagen')">
+                    <img src="assets/iconos-app/icono-imagen.png" class="icono-app">
+                    <span class="texto-boton">Crear Imagen</span>
+                </button>
+                <button onclick="irA('vision')">
+                    <img src="assets/iconos-app/icono-vision.png" class="icono-app">
+                    <span class="texto-boton">Analizar Foto</span>
+                </button>
+                <button onclick="irA('profeta')">
+                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">⚽</span>
+                    <span class="texto-boton">Profeta Deportivo</span>
+                </button>
+                <button onclick="irA('apoyar')">
+                    <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
+                    <span class="texto-boton">Apoyar</span>
+                </button>
+                <button onclick="cerrarSesionDidasko()" class="btn-salir-movil">
+                    <span class="icono-app">🚪</span>
+                    <span class="texto-boton">Salir</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 💬 SECCIÓN CHAT -->
+    <section id="chat" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🦉 Chat Didasko AI</h2>
+        </div>
+        <div id="chat-mensajes" class="contenido"></div>
+        <div class="input-area">
+            <img src="assets/logo/buho-mascota.png" class="mascota">
+            <input type="text" id="chat-input" placeholder="Escribe tu pregunta...">
+            <button onclick="enviarMensaje()">➤</button>
+        </div>
+    </section>
+
+    <!-- 🖼️ SECCIÓN IMAGEN -->
+    <section id="imagen" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🖼️ Crear / Editar Imagen</h2>
+        </div>
+
+        <div class="modo-selector">
+            <button class="btn-modo active" data-modo="crear" onclick="seleccionarModo('crear')">🖼️ Crear</button>
+            <button class="btn-modo" data-modo="editar" onclick="seleccionarModo('editar')">✏️ Editar</button>
+        </div>
+
+        <div id="imagen-resultado" class="contenido centrado"></div>
+
+        <div class="formato-selector" id="formato-selector">
+            <span class="formato-label">Formato:</span>
+            <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬛ 1:1</button>
+            <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
+            <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱  9:16</button>
+        </div>
+
+        <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
+
+        <div class="input-area">
+            <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen">📁</button>
+            <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
+            <button onclick="procesarImagen()">➤</button>
+        </div>
+    </section>
+
+    <!-- 🔍 SECCIÓN VISIÓN -->
+    <section id="vision" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🔍 Analizar Foto</h2>
+        </div>
+        <div id="vision-resultado" class="contenido centrado"></div>
+        <div class="input-area">
+            <input type="file" id="vision-file" accept="image/*" style="display:none">
+            <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
+            <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
+            <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📸</button>
+            <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
+            <button onclick="analizarImagen()">➤</button>
+        </div>
+    </section>
+
+    <!-- ⚽ SECCIÓN PROFETA DEPORTIVO -->
+    <section id="profeta" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>⚽ Profeta Deportivo</h2>
+        </div>
+        <div id="profeta-resultado" class="contenido centrado"></div>
+    </section>
+
+      <!-- 💛 SECCIÓN MISIÓN, VISIÓN, COMPROMISO -->
+    <section id="apoyar" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>💛 Misión, Visión y Compromiso</h2>
+        </div>
+        
+        <div class="contenido mvc-contenido">
+            
+            <!-- 🎯 MISIÓN -->
+            <div class="mvc-bloque mvc-mision">
+                <div class="mvc-icono">🎯</div>
+                <h2 class="mvc-titulo">Nuestra Misión</h2>
+                <p class="mvc-texto">
+                    En <strong>Didasko AI</strong> creemos que la inteligencia artificial no debe ser un privilegio de pocos, sino una herramienta al alcance de todos. Nuestra misión es <strong>democratizar el acceso a la IA</strong> para estudiantes de primaria, secundaria y universidad, creadores de contenido y personas emprendedoras que necesitan resolver tareas, generar ideas y potenciar su creatividad sin barreras económicas.
+                </p>
+                
+                <div class="mvc-servicios">
+                    <h3>Con Didasko puedes:</h3>
+                    <ul>
+                        <li>🦉 <strong>Chat inteligente:</strong> Resuelve tareas escolares y universitarias, redacta ensayos, discursos y textos profesionales.</li>
+                        <li>🎨 <strong>Crear imágenes:</strong> Genera arte visual desde texto con calidad profesional (8/10 en el mercado actual).</li>
+                        <li>🔍 <strong>Analizar fotos:</strong> Resuelve dudas académicas visuales y analiza imágenes al instante.</li>
+                        <li>⚽ <strong>Profeta Deportivo:</strong> Predicciones deportivas con IA para los amantes del fútbol.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 🌟 VISIÓN -->
+            <div class="mvc-bloque mvc-vision">
+                <div class="mvc-icono">🌟</div>
+                <h2 class="mvc-titulo">Nuestra Visión</h2>
+                <p class="mvc-texto">
+                    Convertir a <strong>Didasko AI</strong> en una plataforma educativa y creativa <strong>100% accesible en Colombia y Latinoamérica</strong>, donde cualquier persona —sin importar su condición económica— pueda aprender, crear y crecer con el poder de la inteligencia artificial.
+                </p>
+                
+                <div class="mvc-suenos">
+                    <h3>Soñamos con un futuro donde:</h3>
+                    <ul>
+                        <li>📚 Ningún estudiante se quede sin resolver una tarea por falta de recursos.</li>
+                        <li>🎨 Todo creador de contenido tenga herramientas de nivel profesional gratis.</li>
+                        <li>💡 Las ideas de cualquier emprendedor puedan materializarse sin costos elevados.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 💛 COMPROMISO -->
+            <div class="mvc-bloque mvc-compromiso">
+                <div class="mvc-icono">💛</div>
+                <h2 class="mvc-titulo">Nuestro Compromiso</h2>
+                <p class="mvc-texto mvc-historia">
+                    <strong>Didasko AI</strong> nace de una historia real de superación y propósito.
+                </p>
+                
+                <p class="mvc-texto">
+                    Soy <strong>Wilfer</strong>, fundador de este proyecto. Me dedico al <strong>reciclaje</strong>, y hace <strong>10 años dejé atrás las drogas</strong> para reconstruir mi vida. En este camino, decidí formarme como <strong>creador de contenido, desarrollador web y experto en SEO</strong>, aprovechando recursos gratuitos y programas comunitarios como los de <strong>BibloRed Bogotá</strong>, que me abrieron las puertas al conocimiento.
+                </p>
+                
+                <p class="mvc-texto mvc-destacado">
+                    <strong>Didasko AI es el resultado tangible de ese proceso:</strong> una prueba de que la voluntad, el aprendizaje continuo y el acceso a la educación pueden transformar vidas.
+                </p>
+                
+                <p class="mvc-texto">
+                    Hoy te ofrezco esta herramienta <strong>gratis</strong> porque sé lo que significa no tener recursos. Pero mantenerla activa (servidores, IA, datos) tiene costos reales.
+                </p>
+                
+                <div class="mvc-apoyo-caja">
+                    <h3>💛 Si Didasko te ha ayudado, considera apoyarme:</h3>
+                    <ul>
+                        <li>✅ <strong>Aporte voluntario desde $4.000 COP en adelante</strong></li>
+                        <li>✅ Tu apoyo mantiene la plataforma <strong>gratis para quienes más la necesitan</strong></li>
+                        <li>✅ Como agradecimiento, recibes acceso <strong>VIP a Predicciones Deportivas Ilimitadas por 30 días</strong></li>
+                    </ul>
+                    <p class="mvc-frase">
+                        <em>"No es un pago, es un acto de comunidad. Cada aporte se convierte en más días de servicio activo para estudiantes, creadores y personas que, como yo alguna vez, buscan una segunda oportunidad."</em>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- 💳 MÉTODOS DE PAGO -->
+            <div class="mvc-bloque mvc-metodos">
+                <div class="mvc-icono">💳</div>
+                <h2 class="mvc-titulo">Métodos de Apoyo</h2>
+                <p class="mvc-texto-centro">Elige el que más te convenga:</p>
+                
+                <div class="metodos-grid">
+                    
+                    <!-- Nequi -->
+                    <div class="metodo-card metodo-nequi" onclick="copiarDato('3171547065', 'Nequi')">
+                        <div class="metodo-logo">📱</div>
+                        <h3>Nequi</h3>
+                        <p class="metodo-dato">3171547065</p>
+                        <p class="metodo-hint">👆 Toca para copiar</p>
+                    </div>
+                    
+                    <!-- Daviplata -->
+                    <div class="metodo-card metodo-daviplata" onclick="copiarDato('3171547065', 'Daviplata')">
+                        <div class="metodo-logo">💳</div>
+                        <h3>Daviplata</h3>
+                        <p class="metodo-dato">3171547065</p>
+                        <p class="metodo-hint">👆 Toca para copiar</p>
+                    </div>
+                    
+                    <!-- Bre-B -->
+                    <div class="metodo-card metodo-breb" onclick="copiarDato('3171547065', 'Bre-B')">
+                        <div class="metodo-logo">🔄</div>
+                        <h3>Bre-B</h3>
+                        <p class="metodo-dato">3171547065</p>
+                        <p class="metodo-hint">👆 Toca para copiar</p>
+                    </div>
+                    
+                    <!-- PayPal -->
+                    <div class="metodo-card metodo-paypal" onclick="copiarDato('cortesandres868@gmail.com', 'PayPal')">
+                        <div class="metodo-logo">💵</div>
+                        <h3>PayPal</h3>
+                        <p class="metodo-dato">cortesandres868@gmail.com</p>
+                        <p class="metodo-hint">👆 Toca para copiar</p>
+                    </div>
+                    
+                </div>
+                
+                <!-- WhatsApp para confirmar -->
+                <div class="mvc-whatsapp">
+                    <h3>📱 Después de tu aporte, contáctame:</h3>
+                    <button onclick="contactarWhatsAppVIP()" class="btn-whatsapp-mvc">
+                        <img src="assets/logo/whatsapp.png" alt="WhatsApp" style="width:24px; height:24px; vertical-align:middle; margin-right:8px;"> Escribir por WhatsApp
+                    </button>
+                    <p class="mvc-whatsapp-num">+57 317 154 7065</p>
+                </div>
+            </div>
+            
+            <!-- 🙏 AGRADECIMIENTO -->
+            <div class="mvc-bloque mvc-gracias">
+                <div class="mvc-icono-grande">🙏</div>
+                <h2 class="mvc-titulo-gracias">Gracias por creer en este proyecto</h2>
+                <p class="mvc-texto-gracias">
+                    Cada usuario, cada aporte, cada mensaje de apoyo me recuerdan que <strong>la transformación es posible</strong>. Didasko no es solo código y algoritmos, es la prueba de que con propósito y trabajo honesto se puede construir algo grande.
+                </p>
+                <div class="mvc-firma">
+                    🦉 <strong>Didasko AI</strong> + Comunidad
+                </div>
+            </div>
+            
+        </div>
+    </section>
 
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
@@ -493,7 +492,7 @@
 
     <script>
         function cerrarSesionDidasko() {
-            if (confirm('🦉 ¿Seguro que quieres cerrar sesión?')) {
+            if (confirm('🤔 ¿Seguro que quieres cerrar sesión?')) {
                 cerrarSesion();
             }
         }
