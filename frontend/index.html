@@ -31,158 +31,29 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <style>
-        <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
-    <a href="https://t.me/DidaskoProfetaBot" 
-       target="_blank" 
-       id="btn-bot-flotante" 
-       title="Habla con nuestro bot en Telegram">
-        <div class="btn-bot-icono">🤖</div>
-        <div class="btn-bot-texto">
-            <span class="btn-bot-titulo">Bot Predicciones</span>
-            <span class="btn-bot-subtitulo">Habla en Telegram</span>
-        </div>
-        <div class="btn-bot-pulso"></div>
-    </a>
+        body { visibility: hidden; }
 
-    <style>
-        /* 🤖 Botón flotante del bot */
-        #btn-bot-flotante {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background: linear-gradient(135deg, #0088cc, #005a8f);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
-            z-index: 9998;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        #btn-bot-flotante:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
-        }
-        
-        .btn-bot-icono {
-            font-size: 28px;
-            animation: botBounce 2s ease-in-out infinite;
-        }
-        
-        .btn-bot-texto {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-        
-        .btn-bot-titulo {
-            font-weight: 700;
-            font-size: 14px;
-        }
-        
-        .btn-bot-subtitulo {
-            font-size: 11px;
-            opacity: 0.9;
-        }
-        
-        .btn-bot-pulso {
-            position: absolute;
-            top: 50%;
-            left: 30px;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: rgba(0, 136, 204, 0.4);
-            transform: translateY(-50%);
-            animation: botPulso 2s ease-out infinite;
-            pointer-events: none;
-            z-index: -1;
-        }
-        
-        @keyframes botBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-        
-        @keyframes botPulso {
-            0% {
-                transform: translateY(-50%) scale(1);
-                opacity: 0.6;
-            }
-            100% {
-                transform: translateY(-50%) scale(1.8);
-                opacity: 0;
-            }
-        }
-        
-        /* 📱 Responsive: en móvil solo mostrar icono */
-        @media (max-width: 600px) {
-            #btn-bot-flotante {
-                bottom: 90px;
-                right: 15px;
-                padding: 12px;
-                border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                justify-content: center;
-            }
-            
-            .btn-bot-texto {
-                display: none;
-            }
-            
-            .btn-bot-icono {
-                font-size: 32px;
-            }
-            
-            .btn-bot-pulso {
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 55px;
-                height: 55px;
-            }
-            
-            @keyframes botPulso {
-                0% {
-                    transform: translate(-50%, -50%) scale(1);
-                    opacity: 0.6;
-                }
-                100% {
-                    transform: translate(-50%, -50%) scale(1.8);
-                    opacity: 0;
-                }
-            }
-        }
-    </style>
-        <body { visibility: hidden; }
-        
         .tab-salir {
             background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
             color: white !important;
             font-weight: 600 !important;
         }
-        
+
         .tab-salir:hover {
             background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
             box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4) !important;
         }
-        
+
         .btn-salir-movil {
             background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
             border: 3px solid #ff6b5c !important;
         }
-        
+
         .btn-salir-movil:hover {
             background: linear-gradient(135deg, #ff6b5c, #d84332) !important;
             box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4) !important;
         }
-        
+
         .btn-salir-movil .icono-app {
             width: 60px;
             height: 60px;
@@ -192,28 +63,28 @@
             font-size: 45px;
             background: transparent !important;
         }
-        
+
         .btn-salir-movil .texto-boton {
             color: white !important;
             font-weight: 700;
         }
     </style>
     <script>
-    (function() {
-        fetch('/api/auth/me', { credentials: 'include' })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success || !data.logueado) {
+        (function() {
+            fetch('/api/auth/me', { credentials: 'include' })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || !data.logueado) {
+                        window.location.replace('/login.html');
+                    } else {
+                        localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
+                        document.body.style.visibility = 'visible';
+                    }
+                })
+                .catch(() => {
                     window.location.replace('/login.html');
-                } else {
-                    localStorage.setItem('didasko_usuario', JSON.stringify(data.usuario));
-                    document.body.style.visibility = 'visible';
-                }
-            })
-            .catch(() => {
-                window.location.replace('/login.html');
-            });
-    })();
+                });
+        })();
     </script>
 </head>
 <body>
@@ -224,11 +95,11 @@
         <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
         <button onclick="irA('profeta')" class="tab-link">⚽ Profeta Deportivo</button>
-        <button onclick="irA('apoyar')" class="tab-link"> 💛 Misión y Visión</button>
+        <button onclick="irA('apoyar')" class="tab-link">💖 Misión y Visión</button>
         <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
     </nav>
 
-    <!-- 🏠 BIENVENIDA (Solo visible en MÓVIL) -->
+    <!-- 🦉 BIENVENIDA (Solo visible en MÓVIL) -->
     <section id="bienvenida" class="pantalla">
         <div class="bienvenida-container">
             <img src="assets/logo/buho-columna.png" class="logo-principal" alt="Didasko AI">
@@ -273,7 +144,7 @@
         <div class="input-area">
             <img src="assets/logo/buho-mascota.png" class="mascota">
             <input type="text" id="chat-input" placeholder="Escribe tu pregunta...">
-            <button onclick="enviarMensaje()">➤</button>
+            <button onclick="enviarMensaje()">▶️</button>
         </div>
     </section>
 
@@ -295,15 +166,15 @@
             <span class="formato-label">Formato:</span>
             <button class="btn-formato active" data-formato="1:1" onclick="seleccionarFormato('1:1')">⬛ 1:1</button>
             <button class="btn-formato" data-formato="16:9" onclick="seleccionarFormato('16:9')">🖥️ 16:9</button>
-            <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱  9:16</button>
+            <button class="btn-formato" data-formato="9:16" onclick="seleccionarFormato('9:16')">📱 9:16</button>
         </div>
 
         <input type="file" id="imagen-editar-file" accept="image/*" style="display:none">
 
         <div class="input-area">
-            <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen">📁</button>
+            <button id="btn-subir-imagen" onclick="document.getElementById('imagen-editar-file').click()" style="display:none" title="Subir imagen">📷</button>
             <input type="text" id="imagen-input" placeholder="Describe tu imagen...">
-            <button onclick="procesarImagen()">➤</button>
+            <button onclick="procesarImagen()">▶️</button>
         </div>
     </section>
 
@@ -318,9 +189,9 @@
             <input type="file" id="vision-file" accept="image/*" style="display:none">
             <input type="file" id="vision-camara" accept="image/*" capture="environment" style="display:none">
             <button onclick="document.getElementById('vision-file').click()" title="Subir de galería">🖼️</button>
-            <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📸</button>
+            <button onclick="document.getElementById('vision-camara').click()" title="Tomar foto con cámara">📷</button>
             <input type="text" id="vision-input" placeholder="Describe lo que quieres extraer...">
-            <button onclick="analizarImagen()">➤</button>
+            <button onclick="analizarImagen()">▶️</button>
         </div>
     </section>
 
@@ -333,42 +204,42 @@
         <div id="profeta-resultado" class="contenido centrado"></div>
     </section>
 
-      <!-- 💛 SECCIÓN MISIÓN, VISIÓN, COMPROMISO -->
+    <!-- 💖 SECCIÓN MISIÓN, VISIÓN, COMPROMISO -->
     <section id="apoyar" class="pantalla">
         <div class="header-seccion movil-only">
             <button onclick="volverInicio()">⬅️</button>
-            <h2>💛 Misión, Visión y Compromiso</h2>
+            <h2>💖 Misión, Visión y Compromiso</h2>
         </div>
-        
+
         <div class="contenido mvc-contenido">
-            
+
             <!-- 🎯 MISIÓN -->
             <div class="mvc-bloque mvc-mision">
                 <div class="mvc-icono">🎯</div>
                 <h2 class="mvc-titulo">Nuestra Misión</h2>
                 <p class="mvc-texto">
-                    En <strong>Didasko AI</strong> creemos que la inteligencia artificial no debe ser un privilegio de pocos, sino una herramienta al alcance de todos. Nuestra misión es <strong>democratizar el acceso a la IA</strong> para estudiantes de primaria, secundaria y universidad, creadores de contenido y personas emprendedoras que necesitan resolver tareas, generar ideas y potenciar su creatividad sin barreras económicas.
+                    En <strong>Didasko AI</strong> creemos que la inteligencia artificial no debe ser un privilegio de pocos, sino una herramienta al alcance de todos.
                 </p>
-                
+
                 <div class="mvc-servicios">
                     <h3>Con Didasko puedes:</h3>
                     <ul>
-                        <li>🦉 <strong>Chat inteligente:</strong> Resuelve tareas escolares y universitarias, redacta ensayos, discursos y textos profesionales.</li>
-                        <li>🎨 <strong>Crear imágenes:</strong> Genera arte visual desde texto con calidad profesional (8/10 en el mercado actual).</li>
+                        <li>🦉 <strong>Chat inteligente:</strong> Resuelve tareas escolares y universitarias, redacta ensayos, discursos y textos.</li>
+                        <li>🖼️ <strong>Crear imágenes:</strong> Genera arte visual desde texto con calidad profesional (8/10 en el mercado actual).</li>
                         <li>🔍 <strong>Analizar fotos:</strong> Resuelve dudas académicas visuales y analiza imágenes al instante.</li>
                         <li>⚽ <strong>Profeta Deportivo:</strong> Predicciones deportivas con IA para los amantes del fútbol.</li>
                     </ul>
                 </div>
             </div>
-            
+
             <!-- 🌟 VISIÓN -->
             <div class="mvc-bloque mvc-vision">
                 <div class="mvc-icono">🌟</div>
                 <h2 class="mvc-titulo">Nuestra Visión</h2>
                 <p class="mvc-texto">
-                    Convertir a <strong>Didasko AI</strong> en una plataforma educativa y creativa <strong>100% accesible en Colombia y Latinoamérica</strong>, donde cualquier persona —sin importar su condición económica— pueda aprender, crear y crecer con el poder de la inteligencia artificial.
+                    Convertir a <strong>Didasko AI</strong> en una plataforma educativa y creativa <strong>100% accesible en Colombia y Latinoamérica</strong>.
                 </p>
-                
+
                 <div class="mvc-suenos">
                     <h3>Soñamos con un futuro donde:</h3>
                     <ul>
@@ -378,7 +249,7 @@
                     </ul>
                 </div>
             </div>
-            
+
             <!-- 💛 COMPROMISO -->
             <div class="mvc-bloque mvc-compromiso">
                 <div class="mvc-icono">💛</div>
@@ -386,19 +257,19 @@
                 <p class="mvc-texto mvc-historia">
                     <strong>Didasko AI</strong> nace de una historia real de superación y propósito.
                 </p>
-                
+
                 <p class="mvc-texto">
-                    Soy <strong>Wilfer</strong>, fundador de este proyecto. Me dedico al <strong>reciclaje</strong>, y hace <strong>10 años dejé atrás las drogas</strong> para reconstruir mi vida. En este camino, decidí formarme como <strong>creador de contenido, desarrollador web y experto en SEO</strong>, aprovechando recursos gratuitos y programas comunitarios como los de <strong>BibloRed Bogotá</strong>, que me abrieron las puertas al conocimiento.
+                    Soy <strong>Wilfer</strong>, fundador de este proyecto. Me dedico al <strong>reciclaje</strong>, y hace <strong>10 años</strong> dejé las drogas.
                 </p>
-                
+
                 <p class="mvc-texto mvc-destacado">
-                    <strong>Didasko AI es el resultado tangible de ese proceso:</strong> una prueba de que la voluntad, el aprendizaje continuo y el acceso a la educación pueden transformar vidas.
+                    <strong>Didasko AI es el resultado tangible de ese proceso:</strong> una prueba de que la voluntad, el aprendizaje continuo y las oportunidades pueden transformar cualquier vida.
                 </p>
-                
+
                 <p class="mvc-texto">
-                    Hoy te ofrezco esta herramienta <strong>gratis</strong> porque sé lo que significa no tener recursos. Pero mantenerla activa (servidores, IA, datos) tiene costos reales.
+                    Hoy te ofrezco esta herramienta <strong>gratis</strong> porque sé lo que significa no tener recursos. Pero mantenerla activa requiere apoyo.
                 </p>
-                
+
                 <div class="mvc-apoyo-caja">
                     <h3>💛 Si Didasko te ha ayudado, considera apoyarme:</h3>
                     <ul>
@@ -407,19 +278,19 @@
                         <li>✅ Como agradecimiento, recibes acceso <strong>VIP a Predicciones Deportivas Ilimitadas por 30 días</strong></li>
                     </ul>
                     <p class="mvc-frase">
-                        <em>"No es un pago, es un acto de comunidad. Cada aporte se convierte en más días de servicio activo para estudiantes, creadores y personas que, como yo alguna vez, buscan una segunda oportunidad."</em>
+                        <em>"No es un pago, es un acto de comunidad. Cada aporte se convierte en más días de servicio activo para estudiantes, creadores y soñadores."</em>
                     </p>
                 </div>
             </div>
-            
+
             <!-- 💳 MÉTODOS DE PAGO -->
             <div class="mvc-bloque mvc-metodos">
                 <div class="mvc-icono">💳</div>
                 <h2 class="mvc-titulo">Métodos de Apoyo</h2>
                 <p class="mvc-texto-centro">Elige el que más te convenga:</p>
-                
+
                 <div class="metodos-grid">
-                    
+
                     <!-- Nequi -->
                     <div class="metodo-card metodo-nequi" onclick="copiarDato('3171547065', 'Nequi')">
                         <div class="metodo-logo">📱</div>
@@ -427,7 +298,7 @@
                         <p class="metodo-dato">3171547065</p>
                         <p class="metodo-hint">👆 Toca para copiar</p>
                     </div>
-                    
+
                     <!-- Daviplata -->
                     <div class="metodo-card metodo-daviplata" onclick="copiarDato('3171547065', 'Daviplata')">
                         <div class="metodo-logo">💳</div>
@@ -435,7 +306,7 @@
                         <p class="metodo-dato">3171547065</p>
                         <p class="metodo-hint">👆 Toca para copiar</p>
                     </div>
-                    
+
                     <!-- Bre-B -->
                     <div class="metodo-card metodo-breb" onclick="copiarDato('3171547065', 'Bre-B')">
                         <div class="metodo-logo">🔄</div>
@@ -443,7 +314,7 @@
                         <p class="metodo-dato">3171547065</p>
                         <p class="metodo-hint">👆 Toca para copiar</p>
                     </div>
-                    
+
                     <!-- PayPal -->
                     <div class="metodo-card metodo-paypal" onclick="copiarDato('cortesandres868@gmail.com', 'PayPal')">
                         <div class="metodo-logo">💵</div>
@@ -451,9 +322,9 @@
                         <p class="metodo-dato">cortesandres868@gmail.com</p>
                         <p class="metodo-hint">👆 Toca para copiar</p>
                     </div>
-                    
+
                 </div>
-                
+
                 <!-- WhatsApp para confirmar -->
                 <div class="mvc-whatsapp">
                     <h3>📱 Después de tu aporte, contáctame:</h3>
@@ -463,21 +334,129 @@
                     <p class="mvc-whatsapp-num">+57 317 154 7065</p>
                 </div>
             </div>
-            
+
             <!-- 🙏 AGRADECIMIENTO -->
             <div class="mvc-bloque mvc-gracias">
                 <div class="mvc-icono-grande">🙏</div>
                 <h2 class="mvc-titulo-gracias">Gracias por creer en este proyecto</h2>
                 <p class="mvc-texto-gracias">
-                    Cada usuario, cada aporte, cada mensaje de apoyo me recuerdan que <strong>la transformación es posible</strong>. Didasko no es solo código y algoritmos, es la prueba de que con propósito y trabajo honesto se puede construir algo grande.
+                    Cada usuario, cada aporte, cada mensaje de apoyo me recuerdan que <strong>la transformación es posible</strong>. Didasko no existiría sin ustedes.
                 </p>
                 <div class="mvc-firma">
                     🦉 <strong>Didasko AI</strong> + Comunidad
                 </div>
             </div>
-            
+
         </div>
     </section>
+
+    <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
+    <a href="https://t.me/DidaskoProfetaBot"
+       target="_blank"
+       id="btn-bot-flotante"
+       title="Habla con nuestro bot en Telegram">
+        <div class="btn-bot-icono">🤖</div>
+        <div class="btn-bot-texto">
+            <span class="btn-bot-titulo">Bot Predicciones</span>
+            <span class="btn-bot-subtitulo">Habla en Telegram</span>
+        </div>
+        <div class="btn-bot-pulso"></div>
+    </a>
+
+    <style>
+        #btn-bot-flotante {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: linear-gradient(135deg, #0088cc, #005a8f);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
+            z-index: 9998;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #btn-bot-flotante:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
+        }
+
+        .btn-bot-icono {
+            font-size: 28px;
+            animation: botBounce 2s ease-in-out infinite;
+        }
+
+        .btn-bot-texto {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .btn-bot-titulo {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .btn-bot-subtitulo {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+
+        .btn-bot-pulso {
+            position: absolute;
+            top: 50%;
+            left: 30px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(0, 136, 204, 0.4);
+            transform: translateY(-50%);
+            animation: botPulso 2s ease-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes botBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes botPulso {
+            0% { transform: translateY(-50%) scale(1); opacity: 0.6; }
+            100% { transform: translateY(-50%) scale(1.8); opacity: 0; }
+        }
+
+        @media (max-width: 600px) {
+            #btn-bot-flotante {
+                bottom: 90px;
+                right: 15px;
+                padding: 12px;
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                justify-content: center;
+            }
+            .btn-bot-texto { display: none; }
+            .btn-bot-icono { font-size: 32px; }
+            .btn-bot-pulso {
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 55px;
+                height: 55px;
+            }
+            @keyframes botPulso {
+                0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+                100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+            }
+        }
+    </style>
 
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
@@ -492,7 +471,7 @@
 
     <script>
         function cerrarSesionDidasko() {
-            if (confirm('🤔 ¿Seguro que quieres cerrar sesión?')) {
+            if (confirm('🦉 ¿Seguro que quieres cerrar sesión?')) {
                 cerrarSesion();
             }
         }
