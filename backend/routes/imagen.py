@@ -1,9 +1,9 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V6.0
+# imagen.py - Endpoint Crear/Editar Imagen V6.1
 # ===================================
 # 🥇 Crear todos: Fal.ai FLUX.1-schnell ($0.003 c/u)
 # 💎 Crear VIP: Fal.ai FLUX.1-dev ($0.025 c/u)
-# 🎨 Editar todos: Fal.ai FLUX-fill ($0.05 c/u)
+# 🎨 Editar todos: Fal.ai FLUX image-to-image ($0.025 c/u)
 # 🔄 Respaldo: Cloudflare Workers AI (GRATIS)
 # 🥉 Último respaldo: Pollinations
 # 🔒 Proveedor oculto: siempre "Didasko AI"
@@ -31,7 +31,7 @@ FAL_API_KEY = os.getenv('FAL_API_KEY')
 # URLs de modelos Fal.ai
 FAL_FLUX_SCHNELL_URL = "https://fal.run/fal-ai/flux/schnell"
 FAL_FLUX_DEV_URL = "https://fal.run/fal-ai/flux/dev"
-FAL_FLUX_FILL_URL = "https://fal.run/fal-ai/flux/dev/image-to-image"
+FAL_FLUX_EDIT_URL = "https://fal.run/fal-ai/flux/dev/image-to-image"
 
 # Cloudflare (Respaldo)
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
@@ -172,12 +172,10 @@ def crear_con_fal(prompt, formato, es_vip=False):
             "Content-Type": "application/json"
         }
         
-              payload = {
+        payload = {
             "prompt": prompt,
-            "image_url": imagen_data_uri,
-            "strength": 0.85,
-            "num_inference_steps": 28,
-            "guidance_scale": 3.5,
+            "image_size": tamano,
+            "num_inference_steps": 4 if not es_vip else 28,
             "num_images": 1,
             "enable_safety_checker": True
         }
@@ -209,7 +207,7 @@ def crear_con_fal(prompt, formato, es_vip=False):
 
 
 def editar_con_fal(prompt, imagen_input):
-    """Edita imagen con Fal.ai FLUX-fill."""
+    """Edita imagen con Fal.ai FLUX image-to-image."""
     if not FAL_API_KEY:
         return None, "Fal.ai no configurado"
 
@@ -228,10 +226,11 @@ def editar_con_fal(prompt, imagen_input):
             "Content-Type": "application/json"
         }
         
-        # FLUX-fill para edición inteligente
+        # FLUX image-to-image para transformaciones
         payload = {
             "prompt": prompt,
             "image_url": imagen_data_uri,
+            "strength": 0.85,
             "num_inference_steps": 28,
             "guidance_scale": 3.5,
             "num_images": 1,
@@ -239,7 +238,7 @@ def editar_con_fal(prompt, imagen_input):
         }
         
         print("🎨 Editando con motor premium...")
-        response = requests.post(FAL_FLUX_FILL_URL, headers=headers, json=payload, timeout=180)
+        response = requests.post(FAL_FLUX_EDIT_URL, headers=headers, json=payload, timeout=180)
         
         if response.status_code == 200:
             data = response.json()
@@ -464,7 +463,7 @@ def editar_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 FAL.AI FLUX-FILL (Principal)
+        # 🥇 FAL.AI IMAGE-TO-IMAGE (Principal)
         imagen_url, error_fal = editar_con_fal(prompt, imagen_input)
 
         # 🔄 CLOUDFLARE (Respaldo)
@@ -550,7 +549,7 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'version': 'V6.0 - Didasko AI Motor Premium (Fal.ai)',
+        'version': 'V6.1 - Didasko AI + Fal.ai FLUX',
         'motor_principal_configurado': bool(FAL_API_KEY),
         'motor_secundario_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
@@ -558,6 +557,6 @@ def test():
         'modelos': {
             'crear_free': 'FLUX.1-schnell',
             'crear_vip': 'FLUX.1-dev',
-            'editar': 'FLUX-fill'
+            'editar': 'FLUX image-to-image'
         }
     })
