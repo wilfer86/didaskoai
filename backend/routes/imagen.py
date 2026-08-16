@@ -1,11 +1,11 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V3.2
+# imagen.py - Endpoint Crear/Editar Imagen V4.0
 # ===================================
-# 🥇 Crear: Cloudflare Workers AI (FLUX-1-schnell)
-# 🎨 Editar: Cloudflare Workers AI (SD 1.5 Img2Img) + Pillow
-# 🥈 Respaldo crear: Pollinations AI
-# 🆕 Sube imágenes a Supabase Storage
-# 🆕 Editar acepta URLs de Storage (no solo base64)
+# 🥇 Crear: Gemini 2.5 Flash Image (Nano Banana) - PREMIUM
+# 🥈 Respaldo: Cloudflare Workers AI (FLUX-1-schnell)
+# 🥉 Último respaldo: Pollinations AI
+# 🎨 Editar: Gemini 2.5 Flash Image (Nano Banana) - PREMIUM
+# 🥈 Respaldo: Cloudflare Img2Img
 # ===================================
 
 import os
@@ -24,6 +24,12 @@ imagen_bp = Blueprint('imagen', __name__)
 # Configuración
 # ===================================
 
+# 🆕 Gemini API
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image-preview"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:generateContent"
+
+# Cloudflare
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
 
@@ -59,7 +65,6 @@ def obtener_dimensiones_imagen(imagen_base64):
     try:
         if ',' in imagen_base64:
             imagen_base64 = imagen_base64.split(',')[1]
-        # Arreglar padding
         missing_padding = len(imagen_base64) % 4
         if missing_padding:
             imagen_base64 += '=' * (4 - missing_padding)
@@ -82,17 +87,9 @@ def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
         print(f"⚠️ Error redimensionando: {e}")
         return imagen_bytes
 
-# ===================================
-# 🆕 Función universal: obtener bytes de imagen
-# Acepta: base64, data:image, URL http/https
-# ===================================
 def obtener_bytes_imagen(imagen_input):
-    """
-    Convierte cualquier formato de entrada a bytes de imagen.
-    Devuelve: (imagen_bytes, error)
-    """
+    """Convierte cualquier formato (base64/data:image/URL) a bytes."""
     try:
-        # Caso 1: URL (http o https) - descargar
         if imagen_input.startswith('http'):
             print(f"📥 Descargando imagen desde URL...")
             response = requests.get(imagen_input, timeout=30)
@@ -100,12 +97,9 @@ def obtener_bytes_imagen(imagen_input):
                 return None, f"No se pudo descargar imagen: {response.status_code}"
             return response.content, None
         
-        # Caso 2: base64 con prefijo data:image
         if imagen_input.startswith('data:image'):
             imagen_input = imagen_input.split(',')[1]
         
-        # Caso 3: base64 puro
-        # Arreglar padding
         missing_padding = len(imagen_input) % 4
         if missing_padding:
             imagen_input += '=' * (4 - missing_padding)
@@ -116,11 +110,8 @@ def obtener_bytes_imagen(imagen_input):
     except Exception as e:
         return None, f"Error decodificando imagen: {str(e)}"
 
-# ===================================
-# 🆕 Guardar registro en Supabase (URL corta)
-# ===================================
 def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
-    """Guarda solo el registro (URL corta) en la tabla imagenes."""
+    """Guarda registro en tabla imagenes."""
     try:
         client = get_client()
         if not client:
@@ -133,12 +124,129 @@ def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
             'formato': formato,
             'tipo': tipo
         }).execute()
-        print(f"✅ Registro de imagen guardado en DB")
+        print(f"✅ Registro guardado en DB")
     except Exception as e:
         print(f"⚠️ No se guardó registro: {e}")
 
 # ===================================
-# 🥇 Cloudflare Workers AI - FLUX schnell (CREAR)
+# 🥇 GEMINI FLASH IMAGE (Nano Banana)
+# ===================================
+
+def crear_con_gemini(prompt):
+    """Crea imagen con Gemini 2.5 Flash Image."""
+    if not GEMINI_API_KEY:
+        return None, "Gemini no configurado"
+
+    try:
+        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+        
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "responseModalities": ["IMAGE"]
+            }
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        
+        print("🍌 Generando con Gemini Nano Banana...")
+        response = requests.post(url, headers=headers, json=payload, timeout=90)
+        
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Buscar la imagen en la respuesta
+            candidates = data.get('candidates', [])
+            if candidates:
+                parts = candidates[0].get('content', {}).get('parts', [])
+                for part in parts:
+                    if 'inlineData' in part:
+                        imagen_b64 = part['inlineData'].get('data', '')
+                        mime_type = part['inlineData'].get('mimeType', 'image/png')
+                        if imagen_b64:
+                            print("✅ Gemini generó imagen exitosamente")
+                            return f"data:{mime_type};base64,{imagen_b64}", None
+            
+            return None, f"Gemini: respuesta sin imagen"
+        
+        error_msg = response.text[:300]
+        print(f"⚠️ Gemini status {response.status_code}: {error_msg}")
+        return None, f"Gemini Código {response.status_code}: {error_msg}"
+        
+    except Exception as e:
+        return None, f"Gemini Error: {str(e)}"
+
+
+def editar_con_gemini(prompt, imagen_input):
+    """Edita imagen con Gemini 2.5 Flash Image."""
+    if not GEMINI_API_KEY:
+        return None, "Gemini no configurado"
+
+    try:
+        # Obtener bytes de imagen (base64 o URL)
+        imagen_bytes, error = obtener_bytes_imagen(imagen_input)
+        if error:
+            return None, error
+        
+        # Convertir a base64 puro
+        imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
+        
+        # Detectar tipo de imagen
+        try:
+            img = Image.open(BytesIO(imagen_bytes))
+            mime_type = f"image/{img.format.lower()}" if img.format else "image/png"
+        except:
+            mime_type = "image/png"
+        
+        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
+        
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": imagen_b64
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {
+                "responseModalities": ["IMAGE"]
+            }
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        
+        print("🍌 Editando con Gemini Nano Banana...")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        
+        if response.status_code == 200:
+            data = response.json()
+            candidates = data.get('candidates', [])
+            if candidates:
+                parts = candidates[0].get('content', {}).get('parts', [])
+                for part in parts:
+                    if 'inlineData' in part:
+                        imagen_b64_edit = part['inlineData'].get('data', '')
+                        mime_out = part['inlineData'].get('mimeType', 'image/png')
+                        if imagen_b64_edit:
+                            print("✅ Gemini editó imagen exitosamente")
+                            return f"data:{mime_out};base64,{imagen_b64_edit}", None
+            
+            return None, "Gemini Edit: sin imagen"
+        
+        error_msg = response.text[:300]
+        return None, f"Gemini Edit Código {response.status_code}: {error_msg}"
+        
+    except Exception as e:
+        return None, f"Gemini Edit Error: {str(e)}"
+
+# ===================================
+# 🥈 Cloudflare Workers AI - FLUX schnell (CREAR)
 # ===================================
 
 def crear_con_cloudflare(prompt, width, height):
@@ -164,39 +272,31 @@ def crear_con_cloudflare(prompt, width, height):
                 imagen_b64 = data['result'].get('image', '')
                 if imagen_b64:
                     return f"data:image/png;base64,{imagen_b64}", None
-                return None, f"Cloudflare: sin imagen"
-            return None, f"Cloudflare respuesta inesperada"
+                return None, "Cloudflare: sin imagen"
+            return None, "Cloudflare respuesta inesperada"
         return None, f"Cloudflare Código {response.status_code}: {response.text[:200]}"
     except Exception as e:
         return None, f"Cloudflare Error: {str(e)}"
 
 # ===================================
-# 🎨 Cloudflare Workers AI - Img2Img (EDITAR)
+# 🥈 Cloudflare Img2Img (EDITAR)
 # ===================================
 
 def editar_con_cloudflare(prompt, imagen_input):
-    """
-    Edita imagen. Acepta base64, data:image o URL http/https.
-    """
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
         return None, "Cloudflare no configurado"
 
     try:
-        # 🆕 Obtener bytes de imagen (funciona con URL o base64)
         imagen_bytes, error = obtener_bytes_imagen(imagen_input)
         if error:
             return None, error
         
-        # Obtener dimensiones originales
         try:
             imagen_pil = Image.open(BytesIO(imagen_bytes))
             ancho_original, alto_original = imagen_pil.size
         except:
             ancho_original, alto_original = 1024, 1024
-        
-        print(f"📐 Imagen original: {ancho_original}x{alto_original}")
 
-        # Convertir bytes a lista de enteros (formato Cloudflare)
         imagen_array = list(imagen_bytes)
 
         headers = {
@@ -231,7 +331,6 @@ def editar_con_cloudflare(prompt, imagen_input):
             if not imagen_editada_bytes:
                 return None, "Cloudflare Edit: sin imagen"
 
-            print(f"🔧 Redimensionando a {ancho_original}x{alto_original}...")
             imagen_final_bytes = redimensionar_imagen(imagen_editada_bytes, ancho_original, alto_original)
             imagen_final_b64 = base64.b64encode(imagen_final_bytes).decode('utf-8')
             return f"data:image/png;base64,{imagen_final_b64}", None
@@ -240,7 +339,7 @@ def editar_con_cloudflare(prompt, imagen_input):
         return None, f"Cloudflare Edit Error: {str(e)}"
 
 # ===================================
-# 🥈 Pollinations AI (Respaldo)
+# 🥉 Pollinations AI (Último respaldo)
 # ===================================
 
 def generar_con_pollinations(prompt, width, height):
@@ -279,59 +378,50 @@ def crear_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 Cloudflare (con 1 reintento si falla la primera vez)
-        print("🦉 Creando imagen con Cloudflare...")
-        imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
+        # 🥇 GEMINI FLASH (Nano Banana) - Premium
+        imagen_url, error_gemini = crear_con_gemini(prompt_mejorado)
+        proveedor = 'Gemini Nano Banana'
         
-        # 🆕 Reintentar 1 vez si Cloudflare falla temporalmente
-        if not imagen_url and error_cf and "400" in str(error_cf):
-            print("🔄 Reintentando Cloudflare...")
+        # 🥈 CLOUDFLARE - Respaldo
+        if not imagen_url:
+            print(f"⚠️ Gemini falló: {error_gemini}")
+            print("🔄 Usando Cloudflare...")
             imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
+            proveedor = 'Cloudflare FLUX'
+            
+            # Reintentar Cloudflare si falla
+            if not imagen_url and error_cf and "400" in str(error_cf):
+                print("🔄 Reintentando Cloudflare...")
+                imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
         
-        if imagen_url:
-            # 🆕 Subir a Supabase Storage y obtener URL pública
-            url_publica = imagen_url
-            if usuario_id:
-                print("📤 Subiendo imagen a Storage...")
-                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
-                guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
-
-            return jsonify({
-                'imagen_url': url_publica,
-                'prompt_usado': prompt_mejorado,
-                'prompt_original': prompt_original,
-                'proveedor': 'Didasko AI',
-                'formato': formato,
-                'success': True
-            })
-
-        print(f"⚠️ Cloudflare falló: {error_cf}")
-
-        # 🥈 Pollinations
-        print("🔄 Usando respaldo Pollinations...")
-        imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
-        if imagen_url:
-            url_publica = imagen_url
-            if usuario_id:
-                print("📤 Subiendo imagen a Storage...")
-                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
-                guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
-
-            return jsonify({
-                'imagen_url': url_publica,
-                'prompt_usado': prompt_mejorado,
-                'prompt_original': prompt_original,
-                'proveedor': 'Didasko AI Respaldo',
-                'formato': formato,
-                'success': True,
-                'nota_cloudflare': error_cf
-            })
+        # 🥉 POLLINATIONS - Último respaldo
+        if not imagen_url:
+            print("🔄 Usando Pollinations...")
+            imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
+            proveedor = 'Pollinations'
+            
+            if not imagen_url:
+                return jsonify({
+                    'error': 'Todos los proveedores fallaron',
+                    'message': f'Gemini: {error_gemini} | Pollinations: {error_pol}',
+                    'success': False
+                }), 500
+        
+        # Guardar en Storage
+        url_publica = imagen_url
+        if usuario_id:
+            print("📤 Subiendo a Storage...")
+            url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
+            guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
 
         return jsonify({
-            'error': 'Todos los proveedores fallaron',
-            'message': f'Cloudflare: {error_cf} | Pollinations: {error_pol}',
-            'success': False
-        }), 500
+            'imagen_url': url_publica,
+            'prompt_usado': prompt_mejorado,
+            'prompt_original': prompt_original,
+            'proveedor': proveedor,
+            'formato': formato,
+            'success': True
+        })
 
     except Exception as e:
         return jsonify({'error': 'Error al crear imagen', 'message': str(e), 'success': False}), 500
@@ -348,7 +438,7 @@ def editar_imagen():
             return jsonify({'error': 'Faltan datos'}), 400
 
         prompt = data['prompt'].strip()
-        imagen_input = data['imagen_base64']  # Puede ser base64 o URL
+        imagen_input = data['imagen_base64']
 
         if not prompt:
             return jsonify({'error': 'Prompt vacío'}), 400
@@ -358,36 +448,47 @@ def editar_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        print("🎨 Editando imagen con Cloudflare Img2Img...")
-        imagen_url, error = editar_con_cloudflare(prompt, imagen_input)
+        # 🥇 GEMINI FLASH (Nano Banana) - Premium
+        imagen_url, error_gemini = editar_con_gemini(prompt, imagen_input)
+        proveedor = 'Gemini Nano Banana'
 
-        # 🆕 Reintentar 1 vez si falla
-        if not imagen_url and error and "400" in str(error):
-            print("🔄 Reintentando Cloudflare Edit...")
-            imagen_url, error = editar_con_cloudflare(prompt, imagen_input)
+        # 🥈 CLOUDFLARE - Respaldo
+        if not imagen_url:
+            print(f"⚠️ Gemini Edit falló: {error_gemini}")
+            print("🔄 Usando Cloudflare Img2Img...")
+            imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
+            proveedor = 'Cloudflare Img2Img'
 
-        if imagen_url:
-            # 🆕 Subir a Storage
-            url_publica = imagen_url
-            if usuario_id:
-                print("📤 Subiendo imagen editada a Storage...")
-                url_publica = subir_imagen_storage(imagen_url, usuario_id, 'editada')
-                guardar_imagen_db(usuario_id, url_publica, prompt, 'editada', 'editada')
+            if not imagen_url and error_cf and "400" in str(error_cf):
+                print("🔄 Reintentando Cloudflare...")
+                imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
 
-            return jsonify({
-                'imagen_url': url_publica,
-                'prompt_usado': prompt,
-                'proveedor': 'Didasko AI',
-                'success': True
-            })
+            if not imagen_url:
+                return jsonify({
+                    'error': 'Error al editar',
+                    'message': f'Gemini: {error_gemini} | Cloudflare: {error_cf}',
+                    'success': False
+                }), 500
 
-        return jsonify({'error': 'Error al editar', 'message': error, 'success': False}), 500
+        # Guardar en Storage
+        url_publica = imagen_url
+        if usuario_id:
+            print("📤 Subiendo imagen editada a Storage...")
+            url_publica = subir_imagen_storage(imagen_url, usuario_id, 'editada')
+            guardar_imagen_db(usuario_id, url_publica, prompt, 'editada', 'editada')
+
+        return jsonify({
+            'imagen_url': url_publica,
+            'prompt_usado': prompt,
+            'proveedor': proveedor,
+            'success': True
+        })
 
     except Exception as e:
         return jsonify({'error': 'Error', 'message': str(e), 'success': False}), 500
 
 # ===================================
-# 🆕 Endpoint: HISTORIAL DE IMÁGENES
+# Endpoint: HISTORIAL
 # ===================================
 
 @imagen_bp.route('/historial', methods=['GET'])
@@ -411,7 +512,7 @@ def obtener_historial_imagenes():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ===================================
-# 🆕 Endpoint: ELIMINAR imagen
+# Endpoint: ELIMINAR
 # ===================================
 
 @imagen_bp.route('/eliminar/<imagen_id>', methods=['DELETE'])
@@ -436,7 +537,12 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
+        'version': 'V4.0 - Gemini Nano Banana',
+        'gemini_configurado': bool(GEMINI_API_KEY),
         'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'message': '🎨 Sistema imagen V3.2 con Storage y edición desde URL'
+        'proveedores': {
+            'crear': ['Gemini Nano Banana (1500/día)', 'Cloudflare FLUX', 'Pollinations'],
+            'editar': ['Gemini Nano Banana (1500/día)', 'Cloudflare Img2Img']
+        }
     })
