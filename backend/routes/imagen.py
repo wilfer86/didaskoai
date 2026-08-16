@@ -26,7 +26,7 @@ imagen_bp = Blueprint('imagen', __name__)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # 🆕 Modelo correcto de Gemini para imágenes
-GEMINI_IMAGE_MODEL = "gemini-3.1-flash-image"
+GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:generateContent"
 
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
