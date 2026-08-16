@@ -31,7 +31,7 @@ FAL_API_KEY = os.getenv('FAL_API_KEY')
 # URLs de modelos Fal.ai
 FAL_FLUX_SCHNELL_URL = "https://fal.run/fal-ai/flux/schnell"
 FAL_FLUX_DEV_URL = "https://fal.run/fal-ai/flux/dev"
-FAL_FLUX_FILL_URL = "https://fal.run/fal-ai/flux-pro/v1/fill"
+FAL_FLUX_FILL_URL = "https://fal.run/fal-ai/flux/dev/image-to-image"
 
 # Cloudflare (Respaldo)
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
@@ -172,10 +172,12 @@ def crear_con_fal(prompt, formato, es_vip=False):
             "Content-Type": "application/json"
         }
         
-        payload = {
+              payload = {
             "prompt": prompt,
-            "image_size": tamano,
-            "num_inference_steps": 4 if not es_vip else 28,
+            "image_url": imagen_data_uri,
+            "strength": 0.85,
+            "num_inference_steps": 28,
+            "guidance_scale": 3.5,
             "num_images": 1,
             "enable_safety_checker": True
         }
