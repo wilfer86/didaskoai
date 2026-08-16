@@ -1,9 +1,10 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V4.1
+# imagen.py - Endpoint Crear/Editar Imagen V5.0
 # ===================================
-# 🥇 Crear: Gemini 2.0 Flash Image (Nano Banana)
-# 🥈 Respaldo: Cloudflare Workers AI
-# 🥉 Último respaldo: Pollinations AI
+# 🥇 Crear todos: SiliconFlow FLUX.1-schnell (GRATIS)
+# 💎 Crear VIP: SiliconFlow FLUX.1-dev (Premium)
+# 🎨 Editar todos: SiliconFlow Kolors (GRATIS)
+# 🔄 Respaldo: Cloudflare Workers AI
 # 🔒 Proveedor oculto: siempre "Didasko AI"
 # ===================================
 
@@ -23,12 +24,16 @@ imagen_bp = Blueprint('imagen', __name__)
 # Configuración
 # ===================================
 
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# 🆕 SiliconFlow (Principal)
+SILICONFLOW_API_KEY = os.getenv('SILICONFLOW_API_KEY')
+SILICONFLOW_URL = "https://api.siliconflow.cn/v1/images/generations"
 
-# 🆕 Modelo correcto de Gemini para imágenes
-GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image"
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:generateContent"
+# Modelos disponibles
+MODELO_FREE = "black-forest-labs/FLUX.1-schnell"
+MODELO_VIP = "black-forest-labs/FLUX.1-dev"
+MODELO_EDITAR = "Kwai-Kolors/Kolors"
 
+# Cloudflare (Respaldo)
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
 
@@ -45,8 +50,9 @@ CLOUDFLARE_EDIT_URL = (
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
 
-# 🔒 Nombre público del proveedor (oculta el modelo real)
+# 🔒 Nombre público del proveedor
 PROVEEDOR_PUBLICO = "Didasko AI"
+PROVEEDOR_PREMIUM = "Didasko AI Premium"
 
 # ===================================
 # Funciones auxiliares
@@ -62,6 +68,15 @@ def formato_a_dimensiones(formato):
         '9:16': (720, 1280)
     }
     return formatos.get(formato, (1024, 1024))
+
+def formato_a_string(formato):
+    """SiliconFlow espera formato tipo '1024x1024'"""
+    formatos = {
+        '1:1': '1024x1024',
+        '16:9': '1280x720',
+        '9:16': '720x1280'
+    }
+    return formatos.get(formato, '1024x1024')
 
 def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
     try:
@@ -83,7 +98,7 @@ def obtener_bytes_imagen(imagen_input):
             print(f"📥 Descargando imagen desde URL...")
             response = requests.get(imagen_input, timeout=30)
             if response.status_code != 200:
-                return None, f"No se pudo descargar imagen: {response.status_code}"
+                return None, f"No se pudo descargar: {response.status_code}"
             return response.content, None
         
         if imagen_input.startswith('data:image'):
@@ -97,10 +112,9 @@ def obtener_bytes_imagen(imagen_input):
         return imagen_bytes, None
         
     except Exception as e:
-        return None, f"Error decodificando imagen: {str(e)}"
+        return None, f"Error: {str(e)}"
 
 def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
-    """Guarda registro en tabla imagenes."""
     try:
         client = get_client()
         if not client:
@@ -117,120 +131,134 @@ def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
     except Exception as e:
         print(f"⚠️ No se guardó registro: {e}")
 
+def verificar_es_vip(usuario_id):
+    """Verifica si el usuario es VIP."""
+    try:
+        client = get_client()
+        if not client or not usuario_id:
+            return False
+        
+        result = client.table('usuarios').select('es_vip, vip_hasta').eq('id', usuario_id).execute()
+        
+        if result.data and len(result.data) > 0:
+            user = result.data[0]
+            if user.get('es_vip'):
+                from datetime import datetime
+                if user.get('vip_hasta'):
+                    vip_hasta = datetime.fromisoformat(user['vip_hasta'].replace('Z', '+00:00'))
+                    if vip_hasta > datetime.now(vip_hasta.tzinfo):
+                        return True
+        return False
+    except Exception as e:
+        print(f"⚠️ Error verificando VIP: {e}")
+        return False
+
 # ===================================
-# 🥇 GEMINI FLASH IMAGE (Nano Banana)
+# 🥇 SILICONFLOW - CREAR
 # ===================================
 
-def crear_con_gemini(prompt):
-    """Crea imagen con Gemini 2.0 Flash Image Generation."""
-    if not GEMINI_API_KEY:
-        return None, "Gemini no configurado"
+def crear_con_siliconflow(prompt, formato, modelo):
+    """Crea imagen con SiliconFlow."""
+    if not SILICONFLOW_API_KEY:
+        return None, "SiliconFlow no configurado"
 
     try:
-        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
-        
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "responseModalities": ["TEXT", "IMAGE"]
-            }
+        headers = {
+            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Content-Type": "application/json"
         }
         
-        headers = {"Content-Type": "application/json"}
+        tamano = formato_a_string(formato)
         
-        print("🎨 Generando con motor premium...")
-        response = requests.post(url, headers=headers, json=payload, timeout=90)
+        payload = {
+            "model": modelo,
+            "prompt": prompt,
+            "image_size": tamano,
+            "batch_size": 1,
+            "num_inference_steps": 20,
+            "guidance_scale": 7.5
+        }
+        
+        # FLUX.1-schnell solo necesita 4 pasos
+        if "schnell" in modelo:
+            payload["num_inference_steps"] = 4
+        
+        print(f"🎨 Generando con motor {'premium' if 'dev' in modelo else 'estándar'}...")
+        response = requests.post(SILICONFLOW_URL, headers=headers, json=payload, timeout=90)
         
         if response.status_code == 200:
             data = response.json()
-            candidates = data.get('candidates', [])
-            if candidates:
-                parts = candidates[0].get('content', {}).get('parts', [])
-                for part in parts:
-                    if 'inlineData' in part:
-                        imagen_b64 = part['inlineData'].get('data', '')
-                        mime_type = part['inlineData'].get('mimeType', 'image/png')
-                        if imagen_b64:
-                            print("✅ Imagen premium generada")
-                            return f"data:{mime_type};base64,{imagen_b64}", None
+            images = data.get('images', [])
+            if images:
+                imagen_url = images[0].get('url', '')
+                if imagen_url:
+                    print("✅ Imagen generada exitosamente")
+                    return imagen_url, None
             
             return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
-        print(f"⚠️ Motor premium status {response.status_code}")
+        print(f"⚠️ SiliconFlow status {response.status_code}: {error_msg}")
         return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
         return None, f"Error: {str(e)}"
 
 
-def editar_con_gemini(prompt, imagen_input):
-    """Edita imagen con Gemini."""
-    if not GEMINI_API_KEY:
-        return None, "Gemini no configurado"
+def editar_con_siliconflow(prompt, imagen_input):
+    """Edita imagen con SiliconFlow Kolors."""
+    if not SILICONFLOW_API_KEY:
+        return None, "SiliconFlow no configurado"
 
     try:
+        # Obtener bytes de imagen
         imagen_bytes, error = obtener_bytes_imagen(imagen_input)
         if error:
             return None, error
         
+        # Convertir a base64
         imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
         
-        try:
-            img = Image.open(BytesIO(imagen_bytes))
-            mime_type = f"image/{img.format.lower()}" if img.format else "image/png"
-        except:
-            mime_type = "image/png"
-        
-        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
-        
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": prompt},
-                    {
-                        "inlineData": {
-                            "mimeType": mime_type,
-                            "data": imagen_b64
-                        }
-                    }
-                ]
-            }],
-            "generationConfig": {
-                "responseModalities": ["TEXT", "IMAGE"]
-            }
+        headers = {
+            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Content-Type": "application/json"
         }
         
-        headers = {"Content-Type": "application/json"}
+        # Kolors soporta image-to-image
+        payload = {
+            "model": MODELO_EDITAR,
+            "prompt": prompt,
+            "image": f"data:image/png;base64,{imagen_b64}",
+            "image_size": "1024x1024",
+            "batch_size": 1,
+            "num_inference_steps": 20,
+            "guidance_scale": 7.5,
+            "strength": 0.7
+        }
         
-        print("🎨 Editando con motor premium...")
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        print("🎨 Editando con motor Kolors...")
+        response = requests.post(SILICONFLOW_URL, headers=headers, json=payload, timeout=120)
         
         if response.status_code == 200:
             data = response.json()
-            candidates = data.get('candidates', [])
-            if candidates:
-                parts = candidates[0].get('content', {}).get('parts', [])
-                for part in parts:
-                    if 'inlineData' in part:
-                        imagen_b64_edit = part['inlineData'].get('data', '')
-                        mime_out = part['inlineData'].get('mimeType', 'image/png')
-                        if imagen_b64_edit:
-                            print("✅ Imagen editada premium")
-                            return f"data:{mime_out};base64,{imagen_b64_edit}", None
+            images = data.get('images', [])
+            if images:
+                imagen_url = images[0].get('url', '')
+                if imagen_url:
+                    print("✅ Imagen editada exitosamente")
+                    return imagen_url, None
             
             return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
+        print(f"⚠️ SiliconFlow Edit status {response.status_code}: {error_msg}")
         return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
         return None, f"Error: {str(e)}"
 
 # ===================================
-# 🥈 Cloudflare Workers AI - CREAR
+# 🔄 Cloudflare (Respaldo)
 # ===================================
 
 def crear_con_cloudflare(prompt, width, height):
@@ -262,9 +290,6 @@ def crear_con_cloudflare(prompt, width, height):
     except Exception as e:
         return None, f"Cloudflare Error: {str(e)}"
 
-# ===================================
-# 🥈 Cloudflare Img2Img - EDITAR
-# ===================================
 
 def editar_con_cloudflare(prompt, imagen_input):
     if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
@@ -323,7 +348,7 @@ def editar_con_cloudflare(prompt, imagen_input):
         return None, f"Cloudflare Edit Error: {str(e)}"
 
 # ===================================
-# 🥉 Pollinations AI
+# 🥉 Pollinations (Último respaldo)
 # ===================================
 
 def generar_con_pollinations(prompt, width, height):
@@ -361,18 +386,27 @@ def crear_imagen():
         prompt_mejorado = mejorar_prompt(prompt_original)
 
         usuario_id = session.get('usuario_id')
-
-        # 🥇 GEMINI (Premium)
-        imagen_url, error_gemini = crear_con_gemini(prompt_mejorado)
         
-        # 🥈 CLOUDFLARE (Respaldo)
+        # 🆕 Verificar si es VIP para usar modelo premium
+        es_vip = verificar_es_vip(usuario_id) if usuario_id else False
+        modelo_usar = MODELO_VIP if es_vip else MODELO_FREE
+        proveedor_publico = PROVEEDOR_PREMIUM if es_vip else PROVEEDOR_PUBLICO
+
+        # 🥇 SILICONFLOW (Principal)
+        imagen_url, error_sf = crear_con_siliconflow(prompt_mejorado, formato, modelo_usar)
+        
+        # Si el modelo VIP falla, intentar con el FREE
+        if not imagen_url and es_vip:
+            print("🔄 Reintentando con modelo estándar...")
+            imagen_url, error_sf = crear_con_siliconflow(prompt_mejorado, formato, MODELO_FREE)
+        
+        # 🔄 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ Motor premium falló: {error_gemini}")
+            print(f"⚠️ SiliconFlow falló: {error_sf}")
             print("🔄 Usando motor secundario...")
             imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
             
             if not imagen_url and error_cf and "400" in str(error_cf):
-                print("🔄 Reintentando...")
                 imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
         
         # 🥉 POLLINATIONS (Último respaldo)
@@ -383,7 +417,7 @@ def crear_imagen():
             if not imagen_url:
                 return jsonify({
                     'error': 'Servicio temporalmente no disponible',
-                    'message': 'Todos los motores fallaron. Intenta en 1 minuto.',
+                    'message': 'Intenta en 1 minuto',
                     'success': False
                 }), 500
         
@@ -398,8 +432,9 @@ def crear_imagen():
             'imagen_url': url_publica,
             'prompt_usado': prompt_mejorado,
             'prompt_original': prompt_original,
-            'proveedor': PROVEEDOR_PUBLICO,
+            'proveedor': proveedor_publico,
             'formato': formato,
+            'es_vip': es_vip,
             'success': True
         })
 
@@ -428,23 +463,22 @@ def editar_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 GEMINI (Premium)
-        imagen_url, error_gemini = editar_con_gemini(prompt, imagen_input)
+        # 🥇 SILICONFLOW KOLORS (Principal)
+        imagen_url, error_sf = editar_con_siliconflow(prompt, imagen_input)
 
-        # 🥈 CLOUDFLARE (Respaldo)
+        # 🔄 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ Motor premium falló: {error_gemini}")
+            print(f"⚠️ SiliconFlow Edit falló: {error_sf}")
             print("🔄 Usando motor secundario...")
             imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
 
             if not imagen_url and error_cf and "400" in str(error_cf):
-                print("🔄 Reintentando...")
                 imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
 
             if not imagen_url:
                 return jsonify({
                     'error': 'No se pudo editar la imagen',
-                    'message': 'Intenta con otra descripción o imagen',
+                    'message': 'Intenta con otra descripción',
                     'success': False
                 }), 500
 
@@ -515,9 +549,14 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'version': 'V4.1 - Didasko AI Motor Premium',
-        'motor_premium_configurado': bool(GEMINI_API_KEY),
+        'version': 'V5.0 - Didasko AI Motor Premium (SiliconFlow)',
+        'motor_principal_configurado': bool(SILICONFLOW_API_KEY),
         'motor_secundario_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'creado_por': 'Didasko AI'
+        'creado_por': 'Didasko AI',
+        'modelos': {
+            'crear_free': 'FLUX.1-schnell (ilimitado)',
+            'crear_vip': 'FLUX.1-dev (premium)',
+            'editar': 'Kolors (ilimitado)'
+        }
     })
