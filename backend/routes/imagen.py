@@ -1,10 +1,11 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V5.0
+# imagen.py - Endpoint Crear/Editar Imagen V6.0
 # ===================================
-# 🥇 Crear todos: SiliconFlow FLUX.1-schnell (GRATIS)
-# 💎 Crear VIP: SiliconFlow FLUX.1-dev (Premium)
-# 🎨 Editar todos: SiliconFlow Kolors (GRATIS)
-# 🔄 Respaldo: Cloudflare Workers AI
+# 🥇 Crear todos: Fal.ai FLUX.1-schnell ($0.003 c/u)
+# 💎 Crear VIP: Fal.ai FLUX.1-dev ($0.025 c/u)
+# 🎨 Editar todos: Fal.ai FLUX-fill ($0.05 c/u)
+# 🔄 Respaldo: Cloudflare Workers AI (GRATIS)
+# 🥉 Último respaldo: Pollinations
 # 🔒 Proveedor oculto: siempre "Didasko AI"
 # ===================================
 
@@ -24,14 +25,13 @@ imagen_bp = Blueprint('imagen', __name__)
 # Configuración
 # ===================================
 
-# 🆕 SiliconFlow (Principal)
-SILICONFLOW_API_KEY = os.getenv('SILICONFLOW_API_KEY')
-SILICONFLOW_URL = "https://api.siliconflow.cn/v1/images/generations"
+# 🆕 Fal.ai (Principal)
+FAL_API_KEY = os.getenv('FAL_API_KEY')
 
-# Modelos disponibles
-MODELO_FREE = "black-forest-labs/FLUX.1-schnell"
-MODELO_VIP = "black-forest-labs/FLUX.1-dev"
-MODELO_EDITAR = "Kwai-Kolors/Kolors"
+# URLs de modelos Fal.ai
+FAL_FLUX_SCHNELL_URL = "https://fal.run/fal-ai/flux/schnell"
+FAL_FLUX_DEV_URL = "https://fal.run/fal-ai/flux/dev"
+FAL_FLUX_FILL_URL = "https://fal.run/fal-ai/flux-pro/v1/fill"
 
 # Cloudflare (Respaldo)
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
@@ -69,14 +69,14 @@ def formato_a_dimensiones(formato):
     }
     return formatos.get(formato, (1024, 1024))
 
-def formato_a_string(formato):
-    """SiliconFlow espera formato tipo '1024x1024'"""
+def formato_a_fal(formato):
+    """Fal.ai usa nombres específicos de tamaños."""
     formatos = {
-        '1:1': '1024x1024',
-        '16:9': '1280x720',
-        '9:16': '720x1280'
+        '1:1': 'square_hd',
+        '16:9': 'landscape_16_9',
+        '9:16': 'portrait_16_9'
     }
-    return formatos.get(formato, '1024x1024')
+    return formatos.get(formato, 'square_hd')
 
 def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
     try:
@@ -154,37 +154,38 @@ def verificar_es_vip(usuario_id):
         return False
 
 # ===================================
-# 🥇 SILICONFLOW - CREAR
+# 🥇 FAL.AI - CREAR
 # ===================================
 
-def crear_con_siliconflow(prompt, formato, modelo):
-    """Crea imagen con SiliconFlow."""
-    if not SILICONFLOW_API_KEY:
-        return None, "SiliconFlow no configurado"
+def crear_con_fal(prompt, formato, es_vip=False):
+    """Crea imagen con Fal.ai."""
+    if not FAL_API_KEY:
+        return None, "Fal.ai no configurado"
 
     try:
+        # Elegir modelo según VIP
+        url_modelo = FAL_FLUX_DEV_URL if es_vip else FAL_FLUX_SCHNELL_URL
+        tamano = formato_a_fal(formato)
+        
         headers = {
-            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Authorization": f"Key {FAL_API_KEY}",
             "Content-Type": "application/json"
         }
         
-        tamano = formato_a_string(formato)
-        
         payload = {
-            "model": modelo,
             "prompt": prompt,
             "image_size": tamano,
-            "batch_size": 1,
-            "num_inference_steps": 20,
-            "guidance_scale": 7.5
+            "num_inference_steps": 4 if not es_vip else 28,
+            "num_images": 1,
+            "enable_safety_checker": True
         }
         
-        # FLUX.1-schnell solo necesita 4 pasos
-        if "schnell" in modelo:
-            payload["num_inference_steps"] = 4
+        # FLUX.1-dev necesita guidance_scale
+        if es_vip:
+            payload["guidance_scale"] = 3.5
         
-        print(f"🎨 Generando con motor {'premium' if 'dev' in modelo else 'estándar'}...")
-        response = requests.post(SILICONFLOW_URL, headers=headers, json=payload, timeout=90)
+        print(f"🎨 Generando con motor {'premium' if es_vip else 'estándar'}...")
+        response = requests.post(url_modelo, headers=headers, json=payload, timeout=120)
         
         if response.status_code == 200:
             data = response.json()
@@ -198,17 +199,17 @@ def crear_con_siliconflow(prompt, formato, modelo):
             return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
-        print(f"⚠️ SiliconFlow status {response.status_code}: {error_msg}")
+        print(f"⚠️ Fal.ai status {response.status_code}: {error_msg}")
         return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
         return None, f"Error: {str(e)}"
 
 
-def editar_con_siliconflow(prompt, imagen_input):
-    """Edita imagen con SiliconFlow Kolors."""
-    if not SILICONFLOW_API_KEY:
-        return None, "SiliconFlow no configurado"
+def editar_con_fal(prompt, imagen_input):
+    """Edita imagen con Fal.ai FLUX-fill."""
+    if not FAL_API_KEY:
+        return None, "Fal.ai no configurado"
 
     try:
         # Obtener bytes de imagen
@@ -216,28 +217,27 @@ def editar_con_siliconflow(prompt, imagen_input):
         if error:
             return None, error
         
-        # Convertir a base64
+        # Convertir a base64 con prefijo data URI
         imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
+        imagen_data_uri = f"data:image/png;base64,{imagen_b64}"
         
         headers = {
-            "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+            "Authorization": f"Key {FAL_API_KEY}",
             "Content-Type": "application/json"
         }
         
-        # Kolors soporta image-to-image
+        # FLUX-fill para edición inteligente
         payload = {
-            "model": MODELO_EDITAR,
             "prompt": prompt,
-            "image": f"data:image/png;base64,{imagen_b64}",
-            "image_size": "1024x1024",
-            "batch_size": 1,
-            "num_inference_steps": 20,
-            "guidance_scale": 7.5,
-            "strength": 0.7
+            "image_url": imagen_data_uri,
+            "num_inference_steps": 28,
+            "guidance_scale": 3.5,
+            "num_images": 1,
+            "enable_safety_checker": True
         }
         
-        print("🎨 Editando con motor Kolors...")
-        response = requests.post(SILICONFLOW_URL, headers=headers, json=payload, timeout=120)
+        print("🎨 Editando con motor premium...")
+        response = requests.post(FAL_FLUX_FILL_URL, headers=headers, json=payload, timeout=180)
         
         if response.status_code == 200:
             data = response.json()
@@ -251,7 +251,7 @@ def editar_con_siliconflow(prompt, imagen_input):
             return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
-        print(f"⚠️ SiliconFlow Edit status {response.status_code}: {error_msg}")
+        print(f"⚠️ Fal.ai Edit status {response.status_code}: {error_msg}")
         return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
@@ -387,22 +387,21 @@ def crear_imagen():
 
         usuario_id = session.get('usuario_id')
         
-        # 🆕 Verificar si es VIP para usar modelo premium
+        # Verificar si es VIP para usar modelo premium
         es_vip = verificar_es_vip(usuario_id) if usuario_id else False
-        modelo_usar = MODELO_VIP if es_vip else MODELO_FREE
         proveedor_publico = PROVEEDOR_PREMIUM if es_vip else PROVEEDOR_PUBLICO
 
-        # 🥇 SILICONFLOW (Principal)
-        imagen_url, error_sf = crear_con_siliconflow(prompt_mejorado, formato, modelo_usar)
+        # 🥇 FAL.AI (Principal)
+        imagen_url, error_fal = crear_con_fal(prompt_mejorado, formato, es_vip)
         
         # Si el modelo VIP falla, intentar con el FREE
         if not imagen_url and es_vip:
             print("🔄 Reintentando con modelo estándar...")
-            imagen_url, error_sf = crear_con_siliconflow(prompt_mejorado, formato, MODELO_FREE)
+            imagen_url, error_fal = crear_con_fal(prompt_mejorado, formato, False)
         
         # 🔄 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ SiliconFlow falló: {error_sf}")
+            print(f"⚠️ Motor principal falló: {error_fal}")
             print("🔄 Usando motor secundario...")
             imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
             
@@ -463,12 +462,12 @@ def editar_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 SILICONFLOW KOLORS (Principal)
-        imagen_url, error_sf = editar_con_siliconflow(prompt, imagen_input)
+        # 🥇 FAL.AI FLUX-FILL (Principal)
+        imagen_url, error_fal = editar_con_fal(prompt, imagen_input)
 
         # 🔄 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ SiliconFlow Edit falló: {error_sf}")
+            print(f"⚠️ Motor premium falló: {error_fal}")
             print("🔄 Usando motor secundario...")
             imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
 
@@ -549,14 +548,14 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'version': 'V5.0 - Didasko AI Motor Premium (SiliconFlow)',
-        'motor_principal_configurado': bool(SILICONFLOW_API_KEY),
+        'version': 'V6.0 - Didasko AI Motor Premium (Fal.ai)',
+        'motor_principal_configurado': bool(FAL_API_KEY),
         'motor_secundario_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
         'creado_por': 'Didasko AI',
         'modelos': {
-            'crear_free': 'FLUX.1-schnell (ilimitado)',
-            'crear_vip': 'FLUX.1-dev (premium)',
-            'editar': 'Kolors (ilimitado)'
+            'crear_free': 'FLUX.1-schnell',
+            'crear_vip': 'FLUX.1-dev',
+            'editar': 'FLUX-fill'
         }
     })
