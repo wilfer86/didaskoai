@@ -1,11 +1,10 @@
 # ===================================
-# imagen.py - Endpoint Crear/Editar Imagen V4.0
+# imagen.py - Endpoint Crear/Editar Imagen V4.1
 # ===================================
-# 🥇 Crear: Gemini 2.5 Flash Image (Nano Banana) - PREMIUM
-# 🥈 Respaldo: Cloudflare Workers AI (FLUX-1-schnell)
+# 🥇 Crear: Gemini 2.0 Flash Image (Nano Banana)
+# 🥈 Respaldo: Cloudflare Workers AI
 # 🥉 Último respaldo: Pollinations AI
-# 🎨 Editar: Gemini 2.5 Flash Image (Nano Banana) - PREMIUM
-# 🥈 Respaldo: Cloudflare Img2Img
+# 🔒 Proveedor oculto: siempre "Didasko AI"
 # ===================================
 
 import os
@@ -24,12 +23,12 @@ imagen_bp = Blueprint('imagen', __name__)
 # Configuración
 # ===================================
 
-# 🆕 Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image-preview"
+
+# 🆕 Modelo correcto de Gemini para imágenes
+GEMINI_IMAGE_MODEL = "gemini-2.0-flash-exp-image-generation"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_IMAGE_MODEL}:generateContent"
 
-# Cloudflare
 CLOUDFLARE_ACCOUNT_ID = os.getenv('CLOUDFLARE_ACCOUNT_ID')
 CLOUDFLARE_API_TOKEN = os.getenv('CLOUDFLARE_API_TOKEN')
 
@@ -46,6 +45,9 @@ CLOUDFLARE_EDIT_URL = (
 POLLINATIONS_URL = 'https://image.pollinations.ai/prompt/'
 POLLINATIONS_MODEL = 'flux'
 
+# 🔒 Nombre público del proveedor (oculta el modelo real)
+PROVEEDOR_PUBLICO = "Didasko AI"
+
 # ===================================
 # Funciones auxiliares
 # ===================================
@@ -61,19 +63,6 @@ def formato_a_dimensiones(formato):
     }
     return formatos.get(formato, (1024, 1024))
 
-def obtener_dimensiones_imagen(imagen_base64):
-    try:
-        if ',' in imagen_base64:
-            imagen_base64 = imagen_base64.split(',')[1]
-        missing_padding = len(imagen_base64) % 4
-        if missing_padding:
-            imagen_base64 += '=' * (4 - missing_padding)
-        imagen_bytes = base64.b64decode(imagen_base64)
-        imagen = Image.open(BytesIO(imagen_bytes))
-        return imagen.size
-    except:
-        return (1024, 1024)
-
 def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
     try:
         imagen = Image.open(BytesIO(imagen_bytes))
@@ -88,7 +77,7 @@ def redimensionar_imagen(imagen_bytes, ancho_destino, alto_destino):
         return imagen_bytes
 
 def obtener_bytes_imagen(imagen_input):
-    """Convierte cualquier formato (base64/data:image/URL) a bytes."""
+    """Convierte cualquier formato a bytes."""
     try:
         if imagen_input.startswith('http'):
             print(f"📥 Descargando imagen desde URL...")
@@ -133,7 +122,7 @@ def guardar_imagen_db(usuario_id, url_publica, prompt, formato, tipo):
 # ===================================
 
 def crear_con_gemini(prompt):
-    """Crea imagen con Gemini 2.5 Flash Image."""
+    """Crea imagen con Gemini 2.0 Flash Image Generation."""
     if not GEMINI_API_KEY:
         return None, "Gemini no configurado"
 
@@ -145,19 +134,17 @@ def crear_con_gemini(prompt):
                 "parts": [{"text": prompt}]
             }],
             "generationConfig": {
-                "responseModalities": ["IMAGE"]
+                "responseModalities": ["TEXT", "IMAGE"]
             }
         }
         
         headers = {"Content-Type": "application/json"}
         
-        print("🍌 Generando con Gemini Nano Banana...")
+        print("🎨 Generando con motor premium...")
         response = requests.post(url, headers=headers, json=payload, timeout=90)
         
         if response.status_code == 200:
             data = response.json()
-            
-            # Buscar la imagen en la respuesta
             candidates = data.get('candidates', [])
             if candidates:
                 parts = candidates[0].get('content', {}).get('parts', [])
@@ -166,34 +153,31 @@ def crear_con_gemini(prompt):
                         imagen_b64 = part['inlineData'].get('data', '')
                         mime_type = part['inlineData'].get('mimeType', 'image/png')
                         if imagen_b64:
-                            print("✅ Gemini generó imagen exitosamente")
+                            print("✅ Imagen premium generada")
                             return f"data:{mime_type};base64,{imagen_b64}", None
             
-            return None, f"Gemini: respuesta sin imagen"
+            return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
-        print(f"⚠️ Gemini status {response.status_code}: {error_msg}")
-        return None, f"Gemini Código {response.status_code}: {error_msg}"
+        print(f"⚠️ Motor premium status {response.status_code}")
+        return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
-        return None, f"Gemini Error: {str(e)}"
+        return None, f"Error: {str(e)}"
 
 
 def editar_con_gemini(prompt, imagen_input):
-    """Edita imagen con Gemini 2.5 Flash Image."""
+    """Edita imagen con Gemini."""
     if not GEMINI_API_KEY:
         return None, "Gemini no configurado"
 
     try:
-        # Obtener bytes de imagen (base64 o URL)
         imagen_bytes, error = obtener_bytes_imagen(imagen_input)
         if error:
             return None, error
         
-        # Convertir a base64 puro
         imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
         
-        # Detectar tipo de imagen
         try:
             img = Image.open(BytesIO(imagen_bytes))
             mime_type = f"image/{img.format.lower()}" if img.format else "image/png"
@@ -215,13 +199,13 @@ def editar_con_gemini(prompt, imagen_input):
                 ]
             }],
             "generationConfig": {
-                "responseModalities": ["IMAGE"]
+                "responseModalities": ["TEXT", "IMAGE"]
             }
         }
         
         headers = {"Content-Type": "application/json"}
         
-        print("🍌 Editando con Gemini Nano Banana...")
+        print("🎨 Editando con motor premium...")
         response = requests.post(url, headers=headers, json=payload, timeout=120)
         
         if response.status_code == 200:
@@ -234,19 +218,19 @@ def editar_con_gemini(prompt, imagen_input):
                         imagen_b64_edit = part['inlineData'].get('data', '')
                         mime_out = part['inlineData'].get('mimeType', 'image/png')
                         if imagen_b64_edit:
-                            print("✅ Gemini editó imagen exitosamente")
+                            print("✅ Imagen editada premium")
                             return f"data:{mime_out};base64,{imagen_b64_edit}", None
             
-            return None, "Gemini Edit: sin imagen"
+            return None, "Sin imagen en respuesta"
         
         error_msg = response.text[:300]
-        return None, f"Gemini Edit Código {response.status_code}: {error_msg}"
+        return None, f"Código {response.status_code}: {error_msg}"
         
     except Exception as e:
-        return None, f"Gemini Edit Error: {str(e)}"
+        return None, f"Error: {str(e)}"
 
 # ===================================
-# 🥈 Cloudflare Workers AI - FLUX schnell (CREAR)
+# 🥈 Cloudflare Workers AI - CREAR
 # ===================================
 
 def crear_con_cloudflare(prompt, width, height):
@@ -279,7 +263,7 @@ def crear_con_cloudflare(prompt, width, height):
         return None, f"Cloudflare Error: {str(e)}"
 
 # ===================================
-# 🥈 Cloudflare Img2Img (EDITAR)
+# 🥈 Cloudflare Img2Img - EDITAR
 # ===================================
 
 def editar_con_cloudflare(prompt, imagen_input):
@@ -339,7 +323,7 @@ def editar_con_cloudflare(prompt, imagen_input):
         return None, f"Cloudflare Edit Error: {str(e)}"
 
 # ===================================
-# 🥉 Pollinations AI (Último respaldo)
+# 🥉 Pollinations AI
 # ===================================
 
 def generar_con_pollinations(prompt, width, height):
@@ -378,39 +362,35 @@ def crear_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 GEMINI FLASH (Nano Banana) - Premium
+        # 🥇 GEMINI (Premium)
         imagen_url, error_gemini = crear_con_gemini(prompt_mejorado)
-        proveedor = 'Gemini Nano Banana'
         
-        # 🥈 CLOUDFLARE - Respaldo
+        # 🥈 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ Gemini falló: {error_gemini}")
-            print("🔄 Usando Cloudflare...")
+            print(f"⚠️ Motor premium falló: {error_gemini}")
+            print("🔄 Usando motor secundario...")
             imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
-            proveedor = 'Cloudflare FLUX'
             
-            # Reintentar Cloudflare si falla
             if not imagen_url and error_cf and "400" in str(error_cf):
-                print("🔄 Reintentando Cloudflare...")
+                print("🔄 Reintentando...")
                 imagen_url, error_cf = crear_con_cloudflare(prompt_mejorado, width, height)
         
-        # 🥉 POLLINATIONS - Último respaldo
+        # 🥉 POLLINATIONS (Último respaldo)
         if not imagen_url:
-            print("🔄 Usando Pollinations...")
+            print("🔄 Usando motor de respaldo...")
             imagen_url, error_pol = generar_con_pollinations(prompt_mejorado, width, height)
-            proveedor = 'Pollinations'
             
             if not imagen_url:
                 return jsonify({
-                    'error': 'Todos los proveedores fallaron',
-                    'message': f'Gemini: {error_gemini} | Pollinations: {error_pol}',
+                    'error': 'Servicio temporalmente no disponible',
+                    'message': 'Todos los motores fallaron. Intenta en 1 minuto.',
                     'success': False
                 }), 500
         
         # Guardar en Storage
         url_publica = imagen_url
         if usuario_id:
-            print("📤 Subiendo a Storage...")
+            print("📤 Guardando en tu galería...")
             url_publica = subir_imagen_storage(imagen_url, usuario_id, 'creada')
             guardar_imagen_db(usuario_id, url_publica, prompt_original, formato, 'creada')
 
@@ -418,7 +398,7 @@ def crear_imagen():
             'imagen_url': url_publica,
             'prompt_usado': prompt_mejorado,
             'prompt_original': prompt_original,
-            'proveedor': proveedor,
+            'proveedor': PROVEEDOR_PUBLICO,
             'formato': formato,
             'success': True
         })
@@ -448,39 +428,37 @@ def editar_imagen():
 
         usuario_id = session.get('usuario_id')
 
-        # 🥇 GEMINI FLASH (Nano Banana) - Premium
+        # 🥇 GEMINI (Premium)
         imagen_url, error_gemini = editar_con_gemini(prompt, imagen_input)
-        proveedor = 'Gemini Nano Banana'
 
-        # 🥈 CLOUDFLARE - Respaldo
+        # 🥈 CLOUDFLARE (Respaldo)
         if not imagen_url:
-            print(f"⚠️ Gemini Edit falló: {error_gemini}")
-            print("🔄 Usando Cloudflare Img2Img...")
+            print(f"⚠️ Motor premium falló: {error_gemini}")
+            print("🔄 Usando motor secundario...")
             imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
-            proveedor = 'Cloudflare Img2Img'
 
             if not imagen_url and error_cf and "400" in str(error_cf):
-                print("🔄 Reintentando Cloudflare...")
+                print("🔄 Reintentando...")
                 imagen_url, error_cf = editar_con_cloudflare(prompt, imagen_input)
 
             if not imagen_url:
                 return jsonify({
-                    'error': 'Error al editar',
-                    'message': f'Gemini: {error_gemini} | Cloudflare: {error_cf}',
+                    'error': 'No se pudo editar la imagen',
+                    'message': 'Intenta con otra descripción o imagen',
                     'success': False
                 }), 500
 
         # Guardar en Storage
         url_publica = imagen_url
         if usuario_id:
-            print("📤 Subiendo imagen editada a Storage...")
+            print("📤 Guardando imagen editada...")
             url_publica = subir_imagen_storage(imagen_url, usuario_id, 'editada')
             guardar_imagen_db(usuario_id, url_publica, prompt, 'editada', 'editada')
 
         return jsonify({
             'imagen_url': url_publica,
             'prompt_usado': prompt,
-            'proveedor': proveedor,
+            'proveedor': PROVEEDOR_PUBLICO,
             'success': True
         })
 
@@ -537,12 +515,9 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'imagen',
-        'version': 'V4.0 - Gemini Nano Banana',
-        'gemini_configurado': bool(GEMINI_API_KEY),
-        'cloudflare_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
+        'version': 'V4.1 - Didasko AI Motor Premium',
+        'motor_premium_configurado': bool(GEMINI_API_KEY),
+        'motor_secundario_configurado': bool(CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN),
         'usuario_logueado': session.get('usuario_id') is not None,
-        'proveedores': {
-            'crear': ['Gemini Nano Banana (1500/día)', 'Cloudflare FLUX', 'Pollinations'],
-            'editar': ['Gemini Nano Banana (1500/día)', 'Cloudflare Img2Img']
-        }
+        'creado_por': 'Didasko AI'
     })
