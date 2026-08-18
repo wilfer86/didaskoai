@@ -1880,3 +1880,132 @@
         padding: 8px 12px;
     }
 }
+/* ==========================================
+   BOTÓN FLOTANTE DESCARGA APK (IZQUIERDA)
+   ========================================== */
+
+#btn-apk-flotante {
+    position: fixed;
+    bottom: 25px;
+    left: 25px;
+    background: linear-gradient(135deg, #2ecc71, #1a8a4a);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 50px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(46, 204, 113, 0.5);
+    z-index: 9998;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+#btn-apk-flotante:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(46, 204, 113, 0.7);
+    background: linear-gradient(135deg, #27ae60, #145a32);
+}
+
+.btn-apk-icono {
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: apkBounce 2s ease-in-out infinite;
+}
+
+.btn-apk-texto {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.btn-apk-titulo {
+    font-weight: 700;
+    font-size: 14px;
+    color: white;
+}
+
+.btn-apk-subtitulo {
+    font-size: 11px;
+    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.btn-apk-pulso {
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: rgba(46, 204, 113, 0.4);
+    transform: translateY(-50%);
+    animation: apkPulso 2s ease-out infinite;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@keyframes apkBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes apkPulso {
+    0% { transform: translateY(-50%) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-50%) scale(1.8); opacity: 0; }
+}
+
+/* ===== RESPONSIVE MÓVIL ===== */
+@media (max-width: 768px) {
+    #btn-apk-flotante {
+        bottom: 90px;
+        left: 15px;
+        padding: 12px;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        justify-content: center;
+    }
+    
+    .btn-apk-texto { 
+        display: none; 
+    }
+    
+    .btn-apk-icono { 
+        font-size: 32px;
+        margin: 0;
+    }
+    
+    .btn-apk-icono img {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    
+    .btn-apk-pulso {
+        right: auto;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 55px;
+        height: 55px;
+    }
+    
+    @keyframes apkPulso {
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+        100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+    }
+}
+
+/* ===== EFECTO DE DESCARGA (opcional) ===== */
+#btn-apk-flotante.descargando {
+    animation: descargaPulse 0.8s ease 3;
+}
+
+@keyframes descargaPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
