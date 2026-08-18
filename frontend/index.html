@@ -87,66 +87,7 @@
         })();
     </script>
 </head>
-   <script>
-function descargarAPK(event) {
-    event.preventDefault();
-    
-    // RUTA CORRECTA DE TU APK
-    const rutas = [
-        'frontend/assets/DidaskoAI.apk',
-        'assets/DidaskoAI.apk',
-        'DidaskoAI.apk'
-    ];
-    
-    // Intentar cada ruta hasta encontrar una que funcione
-    let intento = 0;
-    
-    function intentarDescarga() {
-        if (intento >= rutas.length) {
-            alert('❌ No se encontró el archivo APK. Verifica que esté en la carpeta correcta.');
-            return;
-        }
-        
-        const ruta = rutas[intento];
-        console.log(`Intentando descargar desde: ${ruta}`);
-        
-        // MÉTODO 1: Usar fetch para forzar descarga
-        fetch(ruta)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Archivo no encontrado');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                // Crear URL del blob
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'DidaskoAI.apk';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                
-                // Feedback visual
-                const btn = document.getElementById('btn-apk-flotante');
-                btn.classList.add('descargando');
-                setTimeout(() => btn.classList.remove('descargando'), 2500);
-                
-                console.log('✅ Descarga iniciada correctamente');
-            })
-            .catch(error => {
-                console.error(`❌ Error con ruta ${ruta}:`, error);
-                intento++;
-                intentarDescarga();
-            });
-    }
-    
-    // Iniciar intentos de descarga
-    intentarDescarga();
-}
-</script> 
+
 <body>
 
     <!-- 📁 PESTAÑAS TIPO FOLDER (Solo visibles en PC) -->
@@ -423,6 +364,21 @@ function descargarAPK(event) {
         <div class="btn-bot-pulso"></div>
     </a>
 
+    <!-- 📱 BOTÓN FLOTANTE DESCARGA APK (IZQUIERDA) -->
+    <a href="#"
+       id="btn-apk-flotante"
+       onclick="descargarAPK(event)"
+       title="Descargar APK de Didasko AI">
+        <div class="btn-apk-icono">
+            <img src="frontend/assets/iconos-app/icono-descarga.png" alt="Descargar APK" style="width:32px; height:32px;">
+        </div>
+        <div class="btn-apk-texto">
+            <span class="btn-apk-titulo">Descargar APK</span>
+            <span class="btn-apk-subtitulo">Versión 3.3</span>
+        </div>
+        <div class="btn-apk-pulso"></div>
+    </a>
+
     <style>
         #btn-bot-flotante {
             position: fixed;
@@ -517,21 +473,68 @@ function descargarAPK(event) {
             }
         }
     </style>
-<!-- BOTÓN FLOTANTE DESCARGA APK - VERSIÓN SIMPLE -->
-<a href="DidaskoAI.apk"
-   id="btn-apk-flotante"
-   download="DidaskoAI.apk"
-   onclick="event.preventDefault(); window.location.href=this.href;"
-   title="Descargar APK de Didasko AI">
-    <div class="btn-apk-icono">
-        <img src="frontend/assets/iconos-app/icono-descarga.png" alt="Descargar APK" style="width:32px; height:32px;">
-    </div>
-    <div class="btn-apk-texto">
-        <span class="btn-apk-titulo">Descargar APK</span>
-        <span class="btn-apk-subtitulo">Versión 3.3</span>
-    </div>
-    <div class="btn-apk-pulso"></div>
-</a>
+
+    <script>
+        // =============================================
+        // FUNCIÓN PARA DESCARGAR EL APK
+        // =============================================
+        function descargarAPK(event) {
+            event.preventDefault();
+
+            // RUTAS POSIBLES PARA EL APK
+            const rutas = [
+                'frontend/assets/DidaskoAI.apk',
+                'assets/DidaskoAI.apk',
+                'DidaskoAI.apk'
+            ];
+
+            let intento = 0;
+
+            function intentarDescarga() {
+                if (intento >= rutas.length) {
+                    alert('❌ No se encontró el archivo APK.\nVerifica que DidaskoAI.apk esté en la carpeta correcta.');
+                    return;
+                }
+
+                const ruta = rutas[intento];
+                console.log(`📱 Intentando descargar desde: ${ruta}`);
+
+                fetch(ruta)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Archivo no encontrado');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        // Crear enlace de descarga
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'DidaskoAI.apk';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+
+                        // Feedback visual
+                        const btn = document.getElementById('btn-apk-flotante');
+                        btn.classList.add('descargando');
+                        setTimeout(() => btn.classList.remove('descargando'), 2500);
+
+                        console.log('✅ Descarga iniciada correctamente');
+                    })
+                    .catch(error => {
+                        console.error(`❌ Error con ruta ${ruta}:`, error);
+                        intento++;
+                        intentarDescarga();
+                    });
+            }
+
+            intentarDescarga();
+        }
+    </script>
+
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
     <script src="js/navegacion.js"></script>
