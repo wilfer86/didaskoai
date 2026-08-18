@@ -350,115 +350,20 @@
         </div>
     </section>
 
-    <!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM -->
-    <a href="https://t.me/DidaskoProfetaBot"
-       target="_blank"
-       id="btn-bot-flotante"
-       title="Habla con nuestro bot en Telegram">
-        <div class="btn-bot-icono">🤖</div>
-        <div class="btn-bot-texto">
-            <span class="btn-bot-titulo">Bot Predicciones</span>
-            <span class="btn-bot-subtitulo">Habla en Telegram</span>
-        </div>
-        <div class="btn-bot-pulso"></div>
-    </a>
+<!-- 🤖 BOTÓN FLOTANTE DEL BOT TELEGRAM (DERECHA) -->
+<a href="https://t.me/DidaskoProfetaBot"
+   target="_blank"
+   id="btn-bot-flotante"
+   title="Habla con nuestro bot en Telegram">
+    <div class="btn-bot-icono">🤖</div>
+    <div class="btn-bot-texto">
+        <span class="btn-bot-titulo">Bot Predicciones</span>
+        <span class="btn-bot-subtitulo">Habla en Telegram</span>
+    </div>
+    <div class="btn-bot-pulso"></div>
+</a>
 
-    <style>
-        #btn-bot-flotante {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background: linear-gradient(135deg, #0088cc, #005a8f);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
-            z-index: 9998;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        #btn-bot-flotante:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
-        }
-
-        .btn-bot-icono {
-            font-size: 28px;
-            animation: botBounce 2s ease-in-out infinite;
-        }
-
-        .btn-bot-texto {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-
-        .btn-bot-titulo {
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .btn-bot-subtitulo {
-            font-size: 11px;
-            opacity: 0.9;
-        }
-
-        .btn-bot-pulso {
-            position: absolute;
-            top: 50%;
-            left: 30px;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: rgba(0, 136, 204, 0.4);
-            transform: translateY(-50%);
-            animation: botPulso 2s ease-out infinite;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        @keyframes botBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
-        }
-
-        @keyframes botPulso {
-            0% { transform: translateY(-50%) scale(1); opacity: 0.6; }
-            100% { transform: translateY(-50%) scale(1.8); opacity: 0; }
-        }
-
-        @media (max-width: 600px) {
-            #btn-bot-flotante {
-                bottom: 90px;
-                right: 15px;
-                padding: 12px;
-                border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                justify-content: center;
-            }
-            .btn-bot-texto { display: none; }
-            .btn-bot-icono { font-size: 32px; }
-            .btn-bot-pulso {
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 55px;
-                height: 55px;
-            }
-            @keyframes botPulso {
-                0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-                100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-            }
-        }
-    </style>
-     <!-- BOTÓN FLOTANTE DESCARGA APK - VERSIÓN SIMPLE -->
-<!-- 📥 BOTÓN FLOTANTE DE DESCARGA APP -->
+<!-- 📥 BOTÓN FLOTANTE DE DESCARGA APP (IZQUIERDA) -->
 <a href="assets/DidaskoAI.apk" 
    download="DidaskoAI.apk"
    id="btn-descarga-flotante"
@@ -473,100 +378,221 @@
     <div class="btn-descarga-pulso"></div>
 </a>
 
-    <style>
+<style>
+    /* ═══════════════════════════════════════════════
+       🤖 BOTÓN BOT TELEGRAM (DERECHA)
+    ═══════════════════════════════════════════════ */
+    #btn-bot-flotante {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        background: linear-gradient(135deg, #0088cc, #005a8f);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 50px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
+        z-index: 9998;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #btn-bot-flotante:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
+    }
+
+    .btn-bot-icono {
+        font-size: 28px;
+        animation: botBounce 2s ease-in-out infinite;
+    }
+
+    .btn-bot-texto {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+    }
+
+    .btn-bot-titulo {
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .btn-bot-subtitulo {
+        font-size: 11px;
+        opacity: 0.9;
+    }
+
+    .btn-bot-pulso {
+        position: absolute;
+        top: 50%;
+        left: 30px;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: rgba(0, 136, 204, 0.4);
+        transform: translateY(-50%);
+        animation: botPulso 2s ease-out infinite;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    @keyframes botBounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @keyframes botPulso {
+        0% { transform: translateY(-50%) scale(1); opacity: 0.6; }
+        100% { transform: translateY(-50%) scale(1.8); opacity: 0; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       📥 BOTÓN DESCARGA APP (IZQUIERDA)
+    ═══════════════════════════════════════════════ */
+    #btn-descarga-flotante {
+        position: fixed;
+        bottom: 25px;
+        left: 25px;
+        background: linear-gradient(135deg, #0a1929, #1a3a5c);
+        color: white;
+        padding: 10px 20px 10px 10px;
+        border-radius: 50px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 8px 25px rgba(244, 196, 48, 0.5);
+        z-index: 9998;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        border: 2px solid #f4c430;
+    }
+
+    #btn-descarga-flotante:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 12px 35px rgba(244, 196, 48, 0.8);
+    }
+
+    .btn-descarga-icono {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+        background: linear-gradient(145deg, #f4c430, #c99700);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        animation: botBounce 2s ease-in-out infinite;
+    }
+
+    .btn-descarga-icono img {
+        width: 26px !important;
+        height: 26px !important;
+        max-width: 26px !important;
+        max-height: 26px !important;
+        object-fit: contain;
+        display: block;
+    }
+
+    .btn-descarga-texto {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+    }
+
+    .btn-descarga-titulo {
+        font-weight: 700;
+        font-size: 14px;
+        color: #f4c430;
+    }
+
+    .btn-descarga-subtitulo {
+        font-size: 11px;
+        opacity: 0.9;
+        color: #a8c5e0;
+    }
+
+    .btn-descarga-pulso {
+        position: absolute;
+        top: 50%;
+        left: 32px;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: rgba(244, 196, 48, 0.4);
+        transform: translate(-50%, -50%);
+        animation: descargaPulso 2s ease-out infinite;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    @keyframes descargaPulso {
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+        100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       📱 RESPONSIVE MÓVIL
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+        /* Bot Telegram móvil */
         #btn-bot-flotante {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background: linear-gradient(135deg, #0088cc, #005a8f);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 8px 25px rgba(0, 136, 204, 0.5);
-            z-index: 9998;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        #btn-bot-flotante:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 12px 35px rgba(0, 136, 204, 0.7);
-        }
-
-        .btn-bot-icono {
-            font-size: 28px;
-            animation: botBounce 2s ease-in-out infinite;
-        }
-
-        .btn-bot-texto {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-
-        .btn-bot-titulo {
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .btn-bot-subtitulo {
-            font-size: 11px;
-            opacity: 0.9;
-        }
-
-        .btn-bot-pulso {
-            position: absolute;
-            top: 50%;
-            left: 30px;
-            width: 45px;
-            height: 45px;
+            bottom: 90px;
+            right: 15px;
+            padding: 12px;
             border-radius: 50%;
-            background: rgba(0, 136, 204, 0.4);
-            transform: translateY(-50%);
-            animation: botPulso 2s ease-out infinite;
-            pointer-events: none;
-            z-index: -1;
+            width: 60px;
+            height: 60px;
+            justify-content: center;
+        }
+        #btn-bot-flotante .btn-bot-texto { display: none; }
+        .btn-bot-icono { font-size: 32px; }
+        .btn-bot-pulso {
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55px;
+            height: 55px;
         }
 
-        @keyframes botBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+        /* Descarga móvil - mantiene texto visible */
+        #btn-descarga-flotante {
+            bottom: 20px;
+            left: 15px;
+            padding: 8px 15px 8px 8px;
+            gap: 8px;
+        }
+        .btn-descarga-icono {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+        }
+        .btn-descarga-icono img {
+            width: 22px !important;
+            height: 22px !important;
+            max-width: 22px !important;
+            max-height: 22px !important;
+        }
+        .btn-descarga-titulo { font-size: 12px; }
+        .btn-descarga-subtitulo { font-size: 10px; }
+        .btn-descarga-pulso {
+            width: 38px;
+            height: 38px;
+            left: 27px;
         }
 
         @keyframes botPulso {
-            0% { transform: translateY(-50%) scale(1); opacity: 0.6; }
-            100% { transform: translateY(-50%) scale(1.8); opacity: 0; }
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
         }
-
-        @media (max-width: 600px) {
-            #btn-bot-flotante {
-                bottom: 90px;
-                right: 15px;
-                padding: 12px;
-                border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                justify-content: center;
-            }
-            .btn-bot-texto { display: none; }
-            .btn-bot-icono { font-size: 32px; }
-            .btn-bot-pulso {
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 55px;
-                height: 55px;
-            }
-            @keyframes botPulso {
-                0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-                100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-            }
-        }
-    </style>
+    }
+</style>
  
     <script src="js/config.js"></script>
     <script src="js/main.js"></script>
