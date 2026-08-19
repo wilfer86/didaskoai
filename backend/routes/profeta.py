@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.5
+# profeta.py - Profeta Deportivo V3.6
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
-# IA: Didasko AI (motor Gemini 2.0 Flash)
+# IA: Didasko AI (motor Gemini Flash Lite Latest)
 # Cache: Supabase para eficiencia
-# 🆕 V3.5: Motor Gemini estable y rápido
+# 🆕 V3.6: Motor Gemini Flash Lite (súper rápido)
 # ===================================
 
 import os
@@ -24,9 +24,9 @@ profeta_bp = Blueprint('profeta', __name__)
 THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🤖 Motor Didasko AI (interno - Gemini 2.0 Flash)
+# 🤖 Motor Didasko AI (interno - Gemini Flash Lite súper rápido)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"
 
 # 🌍 Ligas prioritarias con banners
 LIGAS_PRIORITARIAS = {
@@ -205,7 +205,7 @@ def obtener_ultimos_partidos_equipo(equipo_id):
 # ===================================
 
 def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
-    """Genera una predicción usando Didasko AI (motor Gemini 2.0 Flash)."""
+    """Genera una predicción usando Didasko AI (motor Gemini Flash Lite)."""
     if not GEMINI_API_KEY:
         return {'success': False, 'error': 'Motor Didasko AI no configurado'}
     
@@ -774,7 +774,7 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'profeta',
-        'version': 'V3.5 - Motor Gemini 2.0 Flash',
+        'version': 'V3.6 - Motor Gemini Flash Lite Latest',
         'thesportsdb_key': THESPORTSDB_KEY,
         'didasko_ai_configurada': bool(GEMINI_API_KEY),
         'api_conectada': api_ok,
