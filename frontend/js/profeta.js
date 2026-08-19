@@ -348,7 +348,7 @@ function renderizarDetallePartido(p) {
                 <button onclick="verPrediccionIA('${p.idEvent}')" class="btn-prediccion-ia">
                     🔮 Ver Predicción con IA
                 </button>
-                <p class="prediccion-hint">🤖 Análisis inteligente powered by NVIDIA</p>
+                <p class="prediccion-hint">🦉 Análisis inteligente powered by Didasko AI</p>
             </div>
             
             <!-- Aquí aparecerá la predicción -->
