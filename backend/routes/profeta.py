@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.2
+# profeta.py - Profeta Deportivo V3.3
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
-# IA: Didasko AI (motor interno con respaldo)
+# IA: Didasko AI (Gemini principal + NVIDIA respaldo)
 # Cache: Supabase para eficiencia
-# 🆕 V3.2: Timeout aumentado + Reintentos + Fallback Gemini + Marca oculta
+# 🆕 V3.3: Gemini como motor principal (rápido y confiable)
 # ===================================
 
 import os
@@ -24,13 +24,13 @@ profeta_bp = Blueprint('profeta', __name__)
 THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🤖 Motor principal de predicciones (oculto como "Didasko AI")
-NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
-NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-# 🔄 Motor de respaldo (Gemini)
+# 🚀 Motor principal Didasko AI (Gemini - rápido)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+
+# 🔄 Motor de respaldo Didasko AI (NVIDIA - secundario)
+NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
+NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 # 🌍 Ligas prioritarias con banners
 LIGAS_PRIORITARIAS = {
@@ -284,55 +284,64 @@ def extraer_datos_prediccion(texto, equipo_local, equipo_visitante):
     return ganador, confianza
 
 
-def llamar_motor_principal(prompt, max_intentos=3):
-    """🚀 Motor principal Didasko AI (con reintentos y timeout extendido)."""
-    if not NVIDIA_API_KEY:
+def llamar_motor_principal(prompt, max_intentos=2):
+    """🚀 Motor principal Didasko AI (Gemini - rápido y confiable)."""
+    if not GEMINI_API_KEY:
         return {'success': False, 'error': 'Motor principal no configurado'}
     
-    headers = {
-        "Authorization": f"Bearer {NVIDIA_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
     
     payload = {
-        "model": "meta/llama-3.1-8b-instruct",
-        "messages": [
-            {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 400,
-        "top_p": 0.9
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 500,
+            "topP": 0.9
+        }
     }
     
     for intento in range(max_intentos):
         try:
             print(f"🔮 Didasko AI - Intento {intento + 1}/{max_intentos}...")
-            response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=120)
+            response = requests.post(url, json=payload, timeout=30)
             
             if response.status_code == 200:
                 data = response.json()
-                texto = data['choices'][0]['message']['content']
-                print(f"✅ Didasko AI respondió en intento {intento + 1}")
-                return {'success': True, 'texto': texto}
-            else:
-                print(f"⚠️ Motor principal código {response.status_code}")
+                
+                # Verificar que hay contenido válido
+                if 'candidates' in data and len(data['candidates']) > 0:
+                    candidate = data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        texto = candidate['content']['parts'][0]['text']
+                        print(f"✅ Didasko AI respondió en intento {intento + 1}")
+                        return {'success': True, 'texto': texto}
+                
+                print(f"⚠️ Respuesta sin contenido válido")
                 if intento < max_intentos - 1:
-                    time.sleep(2)
+                    time.sleep(1)
+                    continue
+                return {'success': False, 'error': 'Sin contenido válido'}
+            
+            else:
+                print(f"⚠️ Motor principal código {response.status_code}: {response.text[:200]}")
+                if intento < max_intentos - 1:
+                    time.sleep(1)
                     continue
                 return {'success': False, 'error': f'Código {response.status_code}'}
         
         except requests.exceptions.Timeout:
-            print(f"⏱️ Timeout en intento {intento + 1}")
+            print(f"⏱️ Timeout en intento {intento + 1} (30s)")
             if intento < max_intentos - 1:
-                time.sleep(2)
+                time.sleep(1)
                 continue
-            return {'success': False, 'error': 'Timeout después de reintentos'}
+            return {'success': False, 'error': 'Timeout'}
         
         except requests.exceptions.ConnectionError as e:
             print(f"🔌 Error de conexión: {e}")
             if intento < max_intentos - 1:
-                time.sleep(3)
+                time.sleep(1)
                 continue
             return {'success': False, 'error': 'Error de conexión'}
         
@@ -344,34 +353,43 @@ def llamar_motor_principal(prompt, max_intentos=3):
 
 
 def llamar_motor_respaldo(prompt):
-    """🔄 Motor de respaldo (Gemini) si el principal falla."""
-    if not GEMINI_API_KEY:
+    """🔄 Motor de respaldo Didasko AI (secundario)."""
+    if not NVIDIA_API_KEY:
         return {'success': False, 'error': 'Motor de respaldo no configurado'}
     
     try:
         print("🔄 Activando motor de respaldo Didasko AI...")
-        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
         
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 400,
-                "topP": 0.9
-            }
+        headers = {
+            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Content-Type": "application/json"
         }
         
-        response = requests.post(url, json=payload, timeout=60)
+        payload = {
+            "model": "meta/llama-3.1-8b-instruct",
+            "messages": [
+                {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 400,
+            "top_p": 0.9
+        }
+        
+        response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=45)
         
         if response.status_code == 200:
             data = response.json()
-            texto = data['candidates'][0]['content']['parts'][0]['text']
+            texto = data['choices'][0]['message']['content']
             print("✅ Motor de respaldo respondió")
             return {'success': True, 'texto': texto}
         else:
+            print(f"⚠️ Respaldo código {response.status_code}")
             return {'success': False, 'error': f'Respaldo código {response.status_code}'}
+    
+    except requests.exceptions.Timeout:
+        print("⏱️ Timeout en respaldo (45s)")
+        return {'success': False, 'error': 'Timeout en respaldo'}
     
     except Exception as e:
         print(f"❌ Error en respaldo: {e}")
@@ -379,7 +397,7 @@ def llamar_motor_respaldo(prompt):
 
 
 def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
-    """Genera una predicción usando Didasko AI (con respaldo automático)."""
+    """Genera una predicción usando Didasko AI (Gemini principal + NVIDIA respaldo)."""
     try:
         equipo_local = partido_info.get('strHomeTeam', 'Local')
         equipo_visitante = partido_info.get('strAwayTeam', 'Visitante')
@@ -387,10 +405,10 @@ def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
         # Construir prompt
         prompt = construir_prompt(partido_info, forma_local, forma_visitante)
         
-        # 1️⃣ Intentar con motor principal
+        # 1️⃣ Intentar con motor principal (Gemini - rápido)
         resultado = llamar_motor_principal(prompt)
         
-        # 2️⃣ Si falla, usar respaldo
+        # 2️⃣ Si falla, usar respaldo (NVIDIA)
         if not resultado['success']:
             print("⚠️ Motor principal falló, probando respaldo...")
             resultado = llamar_motor_respaldo(prompt)
@@ -399,7 +417,7 @@ def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
         if not resultado['success']:
             return {
                 'success': False,
-                'error': 'Didasko AI está procesando muchas predicciones. Intenta en unos segundos. 🦉'
+                'error': 'Didasko AI está procesando muchas predicciones ahora mismo. Intenta en unos segundos. 🦉'
             }
         
         # 4️⃣ Procesar respuesta exitosa
@@ -679,7 +697,7 @@ def listar_ligas():
 def predecir_partido(evento_id):
     """🔮 Genera o devuelve la predicción IA de un partido."""
     try:
-        # 1️⃣ Verificar autenticación
+        # 1️⃣ Verificar autenticación (compatible con auth.py)
         email = obtener_email_sesion()
         if not email:
             return jsonify({
@@ -871,10 +889,10 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'profeta',
-        'version': 'V3.2 - Timeout + Reintentos + Fallback',
+        'version': 'V3.3 - Gemini principal + NVIDIA respaldo',
         'thesportsdb_key': THESPORTSDB_KEY,
-        'didasko_ai_principal': bool(NVIDIA_API_KEY),
-        'didasko_ai_respaldo': bool(GEMINI_API_KEY),
+        'didasko_ai_principal': bool(GEMINI_API_KEY),
+        'didasko_ai_respaldo': bool(NVIDIA_API_KEY),
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
         'sesion_activa': bool(session.get('usuario_email')),
