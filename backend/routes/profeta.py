@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.1
+# profeta.py - Profeta Deportivo V3.2
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
-# IA: NVIDIA Llama para predicciones
+# IA: Didasko AI (NVIDIA Llama 3.2 rápido)
 # Cache: Supabase para eficiencia
-# 🆕 V3.1: Fix sesión (usuario_email)
+# 🆕 V3.2: Modelo más rápido + Marca oculta
 # ===================================
 
 import os
@@ -24,7 +24,7 @@ profeta_bp = Blueprint('profeta', __name__)
 THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🤖 NVIDIA API para predicciones IA
+# 🤖 Motor Didasko AI (interno)
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -201,13 +201,13 @@ def obtener_ultimos_partidos_equipo(equipo_id):
 
 
 # ===================================
-# 🔮 GENERAR PREDICCIÓN CON NVIDIA IA
+# 🔮 GENERAR PREDICCIÓN CON DIDASKO AI
 # ===================================
 
 def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
-    """Genera una predicción usando NVIDIA Llama."""
+    """Genera una predicción usando Didasko AI (motor Llama 3.2 rápido)."""
     if not NVIDIA_API_KEY:
-        return {'success': False, 'error': 'NVIDIA API key no configurada'}
+        return {'success': False, 'error': 'Motor Didasko AI no configurado'}
     
     try:
         equipo_local = partido_info.get('strHomeTeam', 'Local')
@@ -262,7 +262,7 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
         }
         
         payload = {
-            "model": "meta/llama-3.1-8b-instruct",
+            "model": "meta/llama-3.2-3b-instruct",
             "messages": [
                 {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
                 {"role": "user", "content": prompt}
@@ -303,10 +303,10 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
                 'prediccion': texto,
                 'ganador': ganador,
                 'confianza': confianza,
-                'ia_usada': 'nvidia'
+                'ia_usada': 'didasko-ai'
             }
         else:
-            return {'success': False, 'error': f'NVIDIA API error: {response.status_code}'}
+            return {'success': False, 'error': f'Motor Didasko AI error: {response.status_code}'}
     
     except Exception as e:
         return {'success': False, 'error': f'Error generando predicción: {str(e)}'}
@@ -354,7 +354,7 @@ def guardar_prediccion_cache(partido_info, prediccion_data):
             'prediccion_texto': prediccion_data.get('prediccion', ''),
             'ganador_predicho': prediccion_data.get('ganador', ''),
             'confianza': prediccion_data.get('confianza', 60),
-            'ia_usada': prediccion_data.get('ia_usada', 'nvidia'),
+            'ia_usada': prediccion_data.get('ia_usada', 'didasko-ai'),
             'veces_vista': 1
         }
         
@@ -616,7 +616,7 @@ def predecir_partido(evento_id):
                 'prediccion': cache['prediccion_texto'],
                 'ganador': cache['ganador_predicho'],
                 'confianza': cache['confianza'],
-                'ia_usada': cache['ia_usada'],
+                'ia_usada': 'didasko-ai',
                 'fecha_generada': cache['fecha_generada'],
                 'desde_cache': True,
                 'es_vip': es_vip
@@ -651,7 +651,7 @@ def predecir_partido(evento_id):
             'prediccion': prediccion['prediccion'],
             'ganador': prediccion['ganador'],
             'confianza': prediccion['confianza'],
-            'ia_usada': prediccion['ia_usada'],
+            'ia_usada': 'didasko-ai',
             'desde_cache': False,
             'es_vip': es_vip
         })
@@ -765,9 +765,9 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'profeta',
-        'version': 'V3.1 - Fix sesión',
+        'version': 'V3.2 - Motor Llama 3.2 rápido',
         'thesportsdb_key': THESPORTSDB_KEY,
-        'nvidia_configurada': bool(NVIDIA_API_KEY),
+        'didasko_ai_configurada': bool(NVIDIA_API_KEY),
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
         'sesion_activa': bool(session.get('usuario_email')),
