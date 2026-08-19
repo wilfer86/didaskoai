@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.1
+# profeta.py - Profeta Deportivo V3.2
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
-# IA: NVIDIA Llama para predicciones
+# IA: Didasko AI (motor interno con respaldo)
 # Cache: Supabase para eficiencia
-# 🆕 V3.1: Fix sesión (usuario_email)
+# 🆕 V3.2: Timeout aumentado + Reintentos + Fallback Gemini + Marca oculta
 # ===================================
 
 import os
@@ -24,9 +24,13 @@ profeta_bp = Blueprint('profeta', __name__)
 THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🤖 NVIDIA API para predicciones IA
+# 🤖 Motor principal de predicciones (oculto como "Didasko AI")
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+# 🔄 Motor de respaldo (Gemini)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 # 🌍 Ligas prioritarias con banners
 LIGAS_PRIORITARIAS = {
@@ -201,34 +205,30 @@ def obtener_ultimos_partidos_equipo(equipo_id):
 
 
 # ===================================
-# 🔮 GENERAR PREDICCIÓN CON NVIDIA IA
+# 🔮 GENERAR PREDICCIÓN CON DIDASKO AI
 # ===================================
 
-def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
-    """Genera una predicción usando NVIDIA Llama."""
-    if not NVIDIA_API_KEY:
-        return {'success': False, 'error': 'NVIDIA API key no configurada'}
+def construir_prompt(partido_info, forma_local, forma_visitante):
+    """Construye el prompt para el análisis del partido."""
+    equipo_local = partido_info.get('strHomeTeam', 'Local')
+    equipo_visitante = partido_info.get('strAwayTeam', 'Visitante')
+    liga = partido_info.get('strLeague', 'Liga')
+    fecha = partido_info.get('dateEvent', '')
+    estadio = partido_info.get('strVenue', '')
     
-    try:
-        equipo_local = partido_info.get('strHomeTeam', 'Local')
-        equipo_visitante = partido_info.get('strAwayTeam', 'Visitante')
-        liga = partido_info.get('strLeague', 'Liga')
-        fecha = partido_info.get('dateEvent', '')
-        estadio = partido_info.get('strVenue', '')
-        
-        forma_local_txt = ""
-        if forma_local.get('success') and forma_local.get('partidos'):
-            for p in forma_local['partidos'][:5]:
-                if p.get('intHomeScore') is not None:
-                    forma_local_txt += f"- {p.get('strHomeTeam')} {p.get('intHomeScore')}-{p.get('intAwayScore')} {p.get('strAwayTeam')}\n"
-        
-        forma_visitante_txt = ""
-        if forma_visitante.get('success') and forma_visitante.get('partidos'):
-            for p in forma_visitante['partidos'][:5]:
-                if p.get('intHomeScore') is not None:
-                    forma_visitante_txt += f"- {p.get('strHomeTeam')} {p.get('intHomeScore')}-{p.get('intAwayScore')} {p.get('strAwayTeam')}\n"
-        
-        prompt = f"""Eres el Profeta Deportivo de Didasko AI, un experto analista de fútbol.
+    forma_local_txt = ""
+    if forma_local.get('success') and forma_local.get('partidos'):
+        for p in forma_local['partidos'][:5]:
+            if p.get('intHomeScore') is not None:
+                forma_local_txt += f"- {p.get('strHomeTeam')} {p.get('intHomeScore')}-{p.get('intAwayScore')} {p.get('strAwayTeam')}\n"
+    
+    forma_visitante_txt = ""
+    if forma_visitante.get('success') and forma_visitante.get('partidos'):
+        for p in forma_visitante['partidos'][:5]:
+            if p.get('intHomeScore') is not None:
+                forma_visitante_txt += f"- {p.get('strHomeTeam')} {p.get('intHomeScore')}-{p.get('intAwayScore')} {p.get('strAwayTeam')}\n"
+    
+    prompt = f"""Eres el Profeta Deportivo de Didasko AI, un experto analista de fútbol.
 
 PARTIDO A ANALIZAR:
 🏆 Liga: {liga}
@@ -255,58 +255,164 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
 [Un dato interesante o predicción específica]
 
 ⚠️ Nota: Esta es una predicción con IA para entretenimiento. No es garantía de resultado."""
+    
+    return prompt
 
-        headers = {
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
-            "Content-Type": "application/json"
-        }
+
+def extraer_datos_prediccion(texto, equipo_local, equipo_visitante):
+    """Extrae ganador y confianza del texto generado."""
+    ganador = equipo_local
+    confianza = 60
+    
+    try:
+        if 'GANADOR PROBABLE' in texto:
+            linea_ganador = [l for l in texto.split('\n') if 'GANADOR PROBABLE' in l][0]
+            if equipo_visitante.lower() in linea_ganador.lower():
+                ganador = equipo_visitante
+            elif 'empate' in linea_ganador.lower():
+                ganador = 'Empate'
+        
+        if 'CONFIANZA' in texto:
+            linea_conf = [l for l in texto.split('\n') if 'CONFIANZA' in l][0]
+            import re
+            nums = re.findall(r'\d+', linea_conf)
+            if nums:
+                confianza = int(nums[0])
+    except:
+        pass
+    
+    return ganador, confianza
+
+
+def llamar_motor_principal(prompt, max_intentos=3):
+    """🚀 Motor principal Didasko AI (con reintentos y timeout extendido)."""
+    if not NVIDIA_API_KEY:
+        return {'success': False, 'error': 'Motor principal no configurado'}
+    
+    headers = {
+        "Authorization": f"Bearer {NVIDIA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "meta/llama-3.1-8b-instruct",
+        "messages": [
+            {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 400,
+        "top_p": 0.9
+    }
+    
+    for intento in range(max_intentos):
+        try:
+            print(f"🔮 Didasko AI - Intento {intento + 1}/{max_intentos}...")
+            response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=120)
+            
+            if response.status_code == 200:
+                data = response.json()
+                texto = data['choices'][0]['message']['content']
+                print(f"✅ Didasko AI respondió en intento {intento + 1}")
+                return {'success': True, 'texto': texto}
+            else:
+                print(f"⚠️ Motor principal código {response.status_code}")
+                if intento < max_intentos - 1:
+                    time.sleep(2)
+                    continue
+                return {'success': False, 'error': f'Código {response.status_code}'}
+        
+        except requests.exceptions.Timeout:
+            print(f"⏱️ Timeout en intento {intento + 1}")
+            if intento < max_intentos - 1:
+                time.sleep(2)
+                continue
+            return {'success': False, 'error': 'Timeout después de reintentos'}
+        
+        except requests.exceptions.ConnectionError as e:
+            print(f"🔌 Error de conexión: {e}")
+            if intento < max_intentos - 1:
+                time.sleep(3)
+                continue
+            return {'success': False, 'error': 'Error de conexión'}
+        
+        except Exception as e:
+            print(f"❌ Error inesperado: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    return {'success': False, 'error': 'Todos los intentos fallaron'}
+
+
+def llamar_motor_respaldo(prompt):
+    """🔄 Motor de respaldo (Gemini) si el principal falla."""
+    if not GEMINI_API_KEY:
+        return {'success': False, 'error': 'Motor de respaldo no configurado'}
+    
+    try:
+        print("🔄 Activando motor de respaldo Didasko AI...")
+        url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
         
         payload = {
-            "model": "meta/llama-3.1-8b-instruct",
-            "messages": [
-                {"role": "system", "content": "Eres el Profeta Deportivo, un analista experto de fútbol de Didasko AI."},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0.7,
-            "max_tokens": 400,
-            "top_p": 0.9
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 400,
+                "topP": 0.9
+            }
         }
         
-        response = requests.post(NVIDIA_URL, headers=headers, json=payload, timeout=60)
+        response = requests.post(url, json=payload, timeout=60)
         
         if response.status_code == 200:
             data = response.json()
-            texto = data['choices'][0]['message']['content']
-            
-            ganador = equipo_local
-            confianza = 60
-            
-            try:
-                if 'GANADOR PROBABLE' in texto:
-                    linea_ganador = [l for l in texto.split('\n') if 'GANADOR PROBABLE' in l][0]
-                    if equipo_visitante.lower() in linea_ganador.lower():
-                        ganador = equipo_visitante
-                    elif 'empate' in linea_ganador.lower():
-                        ganador = 'Empate'
-                
-                if 'CONFIANZA' in texto:
-                    linea_conf = [l for l in texto.split('\n') if 'CONFIANZA' in l][0]
-                    import re
-                    nums = re.findall(r'\d+', linea_conf)
-                    if nums:
-                        confianza = int(nums[0])
-            except:
-                pass
-            
-            return {
-                'success': True,
-                'prediccion': texto,
-                'ganador': ganador,
-                'confianza': confianza,
-                'ia_usada': 'nvidia'
-            }
+            texto = data['candidates'][0]['content']['parts'][0]['text']
+            print("✅ Motor de respaldo respondió")
+            return {'success': True, 'texto': texto}
         else:
-            return {'success': False, 'error': f'NVIDIA API error: {response.status_code}'}
+            return {'success': False, 'error': f'Respaldo código {response.status_code}'}
+    
+    except Exception as e:
+        print(f"❌ Error en respaldo: {e}")
+        return {'success': False, 'error': str(e)}
+
+
+def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante):
+    """Genera una predicción usando Didasko AI (con respaldo automático)."""
+    try:
+        equipo_local = partido_info.get('strHomeTeam', 'Local')
+        equipo_visitante = partido_info.get('strAwayTeam', 'Visitante')
+        
+        # Construir prompt
+        prompt = construir_prompt(partido_info, forma_local, forma_visitante)
+        
+        # 1️⃣ Intentar con motor principal
+        resultado = llamar_motor_principal(prompt)
+        
+        # 2️⃣ Si falla, usar respaldo
+        if not resultado['success']:
+            print("⚠️ Motor principal falló, probando respaldo...")
+            resultado = llamar_motor_respaldo(prompt)
+        
+        # 3️⃣ Si ambos fallan
+        if not resultado['success']:
+            return {
+                'success': False,
+                'error': 'Didasko AI está procesando muchas predicciones. Intenta en unos segundos. 🦉'
+            }
+        
+        # 4️⃣ Procesar respuesta exitosa
+        texto = resultado['texto']
+        ganador, confianza = extraer_datos_prediccion(texto, equipo_local, equipo_visitante)
+        
+        return {
+            'success': True,
+            'prediccion': texto,
+            'ganador': ganador,
+            'confianza': confianza,
+            'ia_usada': 'didasko-ai'
+        }
     
     except Exception as e:
         return {'success': False, 'error': f'Error generando predicción: {str(e)}'}
@@ -354,7 +460,7 @@ def guardar_prediccion_cache(partido_info, prediccion_data):
             'prediccion_texto': prediccion_data.get('prediccion', ''),
             'ganador_predicho': prediccion_data.get('ganador', ''),
             'confianza': prediccion_data.get('confianza', 60),
-            'ia_usada': prediccion_data.get('ia_usada', 'nvidia'),
+            'ia_usada': prediccion_data.get('ia_usada', 'didasko-ai'),
             'veces_vista': 1
         }
         
@@ -573,7 +679,7 @@ def listar_ligas():
 def predecir_partido(evento_id):
     """🔮 Genera o devuelve la predicción IA de un partido."""
     try:
-        # 1️⃣ Verificar autenticación (compatible con auth.py)
+        # 1️⃣ Verificar autenticación
         email = obtener_email_sesion()
         if not email:
             return jsonify({
@@ -616,7 +722,7 @@ def predecir_partido(evento_id):
                 'prediccion': cache['prediccion_texto'],
                 'ganador': cache['ganador_predicho'],
                 'confianza': cache['confianza'],
-                'ia_usada': cache['ia_usada'],
+                'ia_usada': 'didasko-ai',
                 'fecha_generada': cache['fecha_generada'],
                 'desde_cache': True,
                 'es_vip': es_vip
@@ -651,7 +757,7 @@ def predecir_partido(evento_id):
             'prediccion': prediccion['prediccion'],
             'ganador': prediccion['ganador'],
             'confianza': prediccion['confianza'],
-            'ia_usada': prediccion['ia_usada'],
+            'ia_usada': 'didasko-ai',
             'desde_cache': False,
             'es_vip': es_vip
         })
@@ -765,9 +871,10 @@ def test():
     return jsonify({
         'status': 'ok',
         'endpoint': 'profeta',
-        'version': 'V3.1 - Fix sesión',
+        'version': 'V3.2 - Timeout + Reintentos + Fallback',
         'thesportsdb_key': THESPORTSDB_KEY,
-        'nvidia_configurada': bool(NVIDIA_API_KEY),
+        'didasko_ai_principal': bool(NVIDIA_API_KEY),
+        'didasko_ai_respaldo': bool(GEMINI_API_KEY),
         'api_conectada': api_ok,
         'ligas_configuradas': len(LIGAS_PRIORITARIAS),
         'sesion_activa': bool(session.get('usuario_email')),
