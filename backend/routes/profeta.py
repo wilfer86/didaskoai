@@ -26,7 +26,7 @@ THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
 # 🚀 Motor principal Didasko AI (Gemini - rápido)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # 🔄 Motor de respaldo Didasko AI (NVIDIA - secundario)
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
