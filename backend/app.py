@@ -1,5 +1,5 @@
 # ===================================
-# app.py - Didasko AI V3.3
+# app.py - Didasko AI V3.4 (Con Generador de Memes)
 # Servidor principal Flask
 # ===================================
 
@@ -48,6 +48,7 @@ from routes.vision import vision_bp
 from routes.profeta import profeta_bp  # ⚽ PROFETA
 from routes.auth import auth_bp
 from routes.telegram_bot import telegram_bp  # 🤖 TELEGRAM BOT
+from routes.memes import memes_bp  # 🎨 GENERADOR DE MEMES (NUEVO)
 
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 app.register_blueprint(imagen_bp, url_prefix='/api/imagen')
@@ -55,6 +56,7 @@ app.register_blueprint(vision_bp, url_prefix='/api/vision')
 app.register_blueprint(profeta_bp, url_prefix='/api/profeta')  # ⚽ PROFETA
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(telegram_bp, url_prefix='/api/telegram')  # 🤖 TELEGRAM BOT
+app.register_blueprint(memes_bp, url_prefix='/api/memes')  # 🎨 GENERADOR DE MEMES (NUEVO)
 
 # ===================================
 # Rutas para servir el frontend
@@ -80,9 +82,9 @@ def status():
     return jsonify({
         'status': 'ok',
         'app': 'Didasko AI',
-        'version': '3.3.0',
+        'version': '3.4.0',
         'message': '🦉 Servidor funcionando correctamente',
-        'features': ['Chat', 'Imagen', 'Vision', 'Profeta', 'Telegram Bot']
+        'features': ['Chat', 'Imagen', 'Vision', 'Profeta', 'Telegram Bot', 'Memes']
     })
 
 # ===================================
@@ -123,12 +125,13 @@ if __name__ == '__main__':
     debug = os.getenv('FLASK_ENV', 'development') == 'development'
     
     print("=" * 50)
-    print("🦉 DIDASKO AI V3.3 - Servidor iniciado")
+    print("🦉 DIDASKO AI V3.4 - Servidor iniciado")
     print(f"📍 Puerto: {port}")
     print(f"🔧 Modo: {'Desarrollo' if debug else 'Producción'}")
     print(f"🌐 URL local: http://localhost:{port}")
     print(f"⚽ Profeta Deportivo: ACTIVO")
     print(f"🤖 Telegram Bot: ACTIVO")
+    print(f"🎨 Generador de Memes: ACTIVO")
     print("=" * 50)
     
     app.run(host='0.0.0.0', port=port, debug=debug)
