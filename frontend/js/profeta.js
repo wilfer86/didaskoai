@@ -1,10 +1,30 @@
 // ===================================
-// profeta.js - Didasko AI V3.3
+// profeta.js - Didasko AI V3.4 (Corregido Horarios Colombia)
 // Profeta Deportivo 🌐 con predicciones IA
 // ===================================
 
 let ligaSeleccionada = null;
 let profetaCargado = false;
+
+// ===================================
+// 🕒 FUNCIÓN AUXILIAR: Convertir UTC a Hora Colombia
+// ===================================
+function convertirHoraColombia(horaUTC) {
+    if (!horaUTC) return '--:--';
+    try {
+        const [hours, minutes] = horaUTC.substring(0, 5).split(':').map(Number);
+        const fechaUTC = new Date();
+        fechaUTC.setUTCHours(hours, minutes, 0, 0);
+        return fechaUTC.toLocaleTimeString('es-CO', {
+            timeZone: 'America/Bogota',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    } catch (e) {
+        return horaUTC.substring(0, 5);
+    }
+}
 
 // ===================================
 // 🌐 Cargar Profeta al abrir sección
@@ -62,7 +82,6 @@ function renderizarProfeta(dataPartidos, dataLigas) {
         day: 'numeric'
     });
 
-    // Estado de partidos hoy
     let htmlPartidosHoy = '';
     if (dataPartidos.success && dataPartidos.partidos && dataPartidos.partidos.length > 0) {
         htmlPartidosHoy = `
@@ -94,7 +113,6 @@ function renderizarProfeta(dataPartidos, dataLigas) {
         `;
     }
 
-    // HTML de ligas con banners
     let htmlLigas = '';
     if (dataLigas.success && dataLigas.ligas) {
         htmlLigas = `
@@ -128,12 +146,14 @@ function renderizarProfeta(dataPartidos, dataLigas) {
 }
 
 // ===================================
-// 🌐 Renderizar UN partido
+// 🌐 Renderizar UN partido (CON CORRECCIÓN DE HORA)
 // ===================================
 function renderizarPartido(partido) {
     const escudoLocal = partido.strHomeTeamBadge || 'assets/logo/buho-mascota.png';
     const escudoVisita = partido.strAwayTeamBadge || 'assets/logo/buho-mascota.png';
-    const hora = partido.strTime ? partido.strTime.substring(0, 5) : '--:--';
+    
+    // ✅ Usamos la función para convertir la hora UTC a Colombia
+    const hora = convertirHoraColombia(partido.strTime);
     const estado = partido.strStatus === 'FT' ? '✅ Finalizado' : '🕒 Programado';
     
     let resultado = '';
@@ -278,7 +298,7 @@ async function verDetallePartido(eventoId) {
 }
 
 // ===================================
-// 🌐 Renderizar detalle
+// 🌐 Renderizar detalle (CON CORRECCIÓN DE HORA)
 // ===================================
 function renderizarDetallePartido(p) {
     const contenedor = document.getElementById('profeta-resultado');
@@ -287,11 +307,14 @@ function renderizarDetallePartido(p) {
     const escudoVisita = p.strAwayTeamBadge || 'assets/logo/buho-mascota.png';
     const poster = p.strPoster || p.strThumb || p.strBanner;
 
+    // ✅ Usamos la función para convertir la hora UTC a Colombia también aquí
+    const horaDetalle = convertirHoraColombia(p.strTime);
+
     let resultado = '';
     if (p.intHomeScore !== null && p.intAwayScore !== null) {
         resultado = `<h1 class="marcador-grande">${p.intHomeScore} - ${p.intAwayScore}</h1>`;
     } else {
-        resultado = `<h2 class="hora-grande">🕒 ${p.strTime ? p.strTime.substring(0,5) : '--:--'}</h2>`;
+        resultado = `<h2 class="hora-grande">🕒 ${horaDetalle}</h2>`;
     }
 
     let videoHTML = '';
@@ -321,7 +344,7 @@ function renderizarDetallePartido(p) {
             
             <div class="detalle-equipos">
                 <div class="detalle-equipo">
-                    <img src="${escudoLocal}" alt="${p.strHomeTeam}">
+                    <img src="${escudoLocal}" alt="${p.strHomeTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
                     <h3>${p.strHomeTeam}</h3>
                 </div>
                 
@@ -331,7 +354,7 @@ function renderizarDetallePartido(p) {
                 </div>
                 
                 <div class="detalle-equipo">
-                    <img src="${escudoVisita}" alt="${p.strAwayTeam}">
+                    <img src="${escudoVisita}" alt="${p.strAwayTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
                     <h3>${p.strAwayTeam}</h3>
                 </div>
             </div>
@@ -343,7 +366,6 @@ function renderizarDetallePartido(p) {
                 ${p.strStatus ? `<p>⚽ <strong>Estado:</strong> ${p.strStatus === 'FT' ? 'Finalizado' : p.strStatus}</p>` : ''}
             </div>
             
-            <!-- 🔮 BOTÓN DE PREDICCIÓN IA -->
             <div class="prediccion-boton-container">
                 <button onclick="verPrediccionIA('${p.idEvent}')" class="btn-prediccion-ia">
                     🔮 Ver Predicción con IA
@@ -351,7 +373,6 @@ function renderizarDetallePartido(p) {
                 <p class="prediccion-hint">🦉 Análisis inteligente powered by Didasko AI</p>
             </div>
             
-            <!-- Aquí aparecerá la predicción -->
             <div id="prediccion-resultado"></div>
             
             ${videoHTML}
@@ -368,7 +389,6 @@ async function verPrediccionIA(eventoId) {
     
     if (!contenedor) return;
     
-    // Deshabilitar botón
     if (boton) {
         boton.disabled = true;
         boton.innerHTML = '⏳ Analizando...';
@@ -389,7 +409,6 @@ async function verPrediccionIA(eventoId) {
         
         const data = await response.json();
         
-        // Si requiere login
         if (data.requiere_login) {
             contenedor.innerHTML = `
                 <div class="prediccion-error">
@@ -405,7 +424,6 @@ async function verPrediccionIA(eventoId) {
             return;
         }
         
-        // Si excede el límite (no VIP)
         if (data.requiere_vip) {
             contenedor.innerHTML = `
                 <div class="prediccion-vip">
@@ -429,7 +447,7 @@ async function verPrediccionIA(eventoId) {
                         <p class="precio-metodo">${data.metodo}</p>
                     </div>
                     
-                 <div class="vip-acciones">
+                    <div class="vip-acciones">
                         <button onclick="contactarWhatsAppVIP()" class="btn-vip-donar">
                             💛 Contactar y Donar
                         </button>
@@ -450,7 +468,6 @@ async function verPrediccionIA(eventoId) {
             return;
         }
         
-        // Si hay error
         if (!data.success) {
             contenedor.innerHTML = `
                 <div class="prediccion-error">
@@ -464,7 +481,6 @@ async function verPrediccionIA(eventoId) {
             return;
         }
         
-        // ✅ Mostrar predicción exitosa
         const badgeVIP = data.es_vip ? '<span class="badge-vip">💎 VIP</span>' : '';
         const badgeCache = data.desde_cache ? '<span class="badge-cache">💾 Cache</span>' : '<span class="badge-nueva">🆕 Nueva</span>';
         
@@ -489,7 +505,6 @@ async function verPrediccionIA(eventoId) {
             </div>
         `;
         
-        // Ocultar botón después de mostrar
         if (boton) {
             boton.style.display = 'none';
         }
@@ -512,13 +527,10 @@ async function verPrediccionIA(eventoId) {
 // ===================================
 function formatearPrediccion(texto) {
     if (!texto) return '';
-    
-    // Convertir markdown básico a HTML
     let html = texto
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n\n/g, '</p><p>')
         .replace(/\n/g, '<br>');
-    
     return `<p>${html}</p>`;
 }
 
@@ -527,9 +539,7 @@ function formatearPrediccion(texto) {
 // ===================================
 function mostrarActivarVIP() {
     const codigo = prompt('🎟️ Ingresa tu código VIP:\n\n(Ejemplo: DIDASKO-ABC123)');
-    
     if (!codigo || !codigo.trim()) return;
-    
     activarCodigoVIP(codigo.trim().toUpperCase());
 }
 
@@ -577,4 +587,4 @@ function contactarWhatsAppVIP() {
     window.open(url, '_blank');
 }
 
-if (CONFIG.DEBUG) console.log('🌐 profeta.js V3.3 cargado con Predicciones IA + WhatsApp');
+if (typeof CONFIG !== 'undefined' && CONFIG.DEBUG) console.log('🌐 profeta.js V3.4 cargado con Corrección de Horarios Colombia');
