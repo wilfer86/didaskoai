@@ -68,6 +68,12 @@
             color: white !important;
             font-weight: 700;
         }
+        
+        /* Animación para el loader de memes */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <script>
         (function() {
@@ -95,6 +101,7 @@
         <button onclick="irA('imagen')" class="tab-link">🖼️ Crear imagen</button>
         <button onclick="irA('vision')" class="tab-link">🔍 Analizar Foto</button>
         <button onclick="irA('profeta')" class="tab-link">⚽ Profeta Deportivo</button>
+        <button onclick="irA('memes')" class="tab-link">🎨 Generar Memes</button>
         <button onclick="irA('apoyar')" class="tab-link">💖 Misión y Visión</button>
         <button onclick="cerrarSesionDidasko()" class="tab-link tab-salir">🚪 Salir</button>
     </nav>
@@ -121,6 +128,10 @@
                 <button onclick="irA('profeta')">
                     <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:60px;">⚽</span>
                     <span class="texto-boton">Profeta Deportivo</span>
+                </button>
+                <button onclick="irA('memes')">
+                    <span class="icono-app" style="display:flex;align-items:center;justify-content:center;font-size:40px;">🎨</span>
+                    <span class="texto-boton">Generar Memes</span>
                 </button>
                 <button onclick="irA('apoyar')">
                     <img src="assets/iconos-app/icono-apoyar.png" class="icono-app">
@@ -202,6 +213,33 @@
             <h2>⚽ Profeta Deportivo</h2>
         </div>
         <div id="profeta-resultado" class="contenido centrado"></div>
+    </section>
+
+    <!-- 🎨 SECCIÓN GENERADOR DE MEMES -->
+    <section id="memes" class="pantalla">
+        <div class="header-seccion movil-only">
+            <button onclick="volverInicio()">⬅️</button>
+            <h2>🎨 Generador de Memes Virales</h2>
+        </div>
+        <div class="contenido centrado" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+            <div class="upload-zone" style="border: 2px dashed #0088cc; padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px; background: rgba(0,136,204,0.05);">
+                <p style="font-size: 1.2em; margin-bottom: 15px; font-weight: bold;">📤 Sube tu meme viral (imagen)</p>
+                <input type="file" id="meme-file" accept="image/*" style="display:none" onchange="mostrarNombreArchivo(this)">
+                <button onclick="document.getElementById('meme-file').click()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold;">Seleccionar Imagen</button>
+                <p id="nombre-archivo" style="margin-top: 15px; color: #666; font-style: italic;"></p>
+                <button onclick="procesarMeme()" id="btn-procesar" style="margin-top: 15px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none;">🚀 Analizar y Generar 10 Guiones</button>
+            </div>
+
+            <div id="memes-loader" style="display: none; text-align: center; padding: 40px;">
+                <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0088cc; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                <p style="font-weight: bold;">🦉 El Profeta está analizando tu meme...</p>
+                <p class="mini" style="color: #666;">Creando situaciones absurdas (esto puede tomar 15-20 segundos)</p>
+            </div>
+
+            <div id="memes-resultados" class="memes-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                <!-- Aquí se inyectarán los memes -->
+            </div>
+        </div>
     </section>
 
     <!-- 💖 SECCIÓN MISIÓN, VISIÓN, COMPROMISO -->
@@ -601,6 +639,7 @@
     <script src="js/imagen.js"></script>
     <script src="js/vision.js"></script>
     <script src="js/profeta.js"></script>
+    <script src="js/memes.js"></script>
     <script src="js/publicidad.js"></script>
     <script src="js/apoyar.js"></script>
     <script src="js/auth.js"></script>
