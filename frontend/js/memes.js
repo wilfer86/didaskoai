@@ -1,22 +1,28 @@
 // ===================================
-// memes.js - Lógica del Generador de Memes
+// memes.js - Generador de Memes Virales con IA (VIDEO)
 // ===================================
 
 let guionesGenerados = [];
+let memeArchivo = null;
 
 function mostrarNombreArchivo(input) {
     if (input.files && input.files[0]) {
-        document.getElementById('nombre-archivo').textContent = `📎 ${input.files[0].name}`;
+        memeArchivo = input.files[0];
+        const esVideo = memeArchivo.type.startsWith('video/');
+        const tipoTexto = esVideo ? '🎬 Video' : '📸 Imagen';
+        document.getElementById('nombre-archivo').textContent = `${tipoTexto}: ${memeArchivo.name}`;
         document.getElementById('btn-procesar').style.display = 'inline-block';
     }
 }
 
 async function procesarMeme() {
-    const fileInput = document.getElementById('meme-file');
-    if (!fileInput.files || !fileInput.files[0]) return;
+    if (!memeArchivo) {
+        alert(' Por favor selecciona un archivo primero');
+        return;
+    }
 
     const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', memeArchivo);
 
     // UI: Mostrar loader
     document.getElementById('btn-procesar').style.display = 'none';
@@ -38,7 +44,7 @@ async function procesarMeme() {
             alert('❌ Error: ' + data.error);
         }
     } catch (error) {
-        alert('❌ Error de conexión: ' + error.message);
+        alert(' Error de conexión: ' + error.message);
     } finally {
         document.getElementById('memes-loader').style.display = 'none';
     }
@@ -76,8 +82,8 @@ async function generarImagenMeme(index, boton) {
     const previewDiv = document.getElementById(`img-preview-${index}`);
     
     boton.disabled = true;
-    boton.textContent = '⏳ Generando...';
-    previewDiv.innerHTML = '<div class="loader" style="width: 30px; height: 30px;"></div>';
+    boton.textContent = ' Generando...';
+    previewDiv.innerHTML = '<div class="loader" style="width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #0088cc; border-radius: 50%; animation: spin 1s linear infinite;"></div>';
 
     try {
         const response = await fetch('/api/memes/generar-imagen', {
@@ -90,15 +96,15 @@ async function generarImagenMeme(index, boton) {
 
         if (data.success) {
             previewDiv.innerHTML = `<img src="${data.imagen_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;" alt="Meme generado">`;
-            boton.textContent = '✅ ¡Listo! (Clic derecho para guardar)';
+            boton.textContent = '✅ ¡Listo!';
             boton.style.background = '#27ae60';
         } else {
             previewDiv.innerHTML = '❌ Error';
             boton.disabled = false;
-            boton.textContent = '🔄 Reintentar';
+            boton.textContent = ' Reintentar';
         }
     } catch (error) {
-        previewDiv.innerHTML = '❌ Error';
+        previewDiv.innerHTML = ' Error';
         boton.disabled = false;
         boton.textContent = '🔄 Reintentar';
     }
