@@ -1,5 +1,5 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.7 (Corregido Zona Horaria + Fallback)
+# profeta.py - Profeta Deportivo V3.7 (Corregido Zona Horaria + Fallback + Partidos Finalizados)
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
@@ -25,7 +25,7 @@ profeta_bp = Blueprint('profeta', __name__)
 THESPORTSDB_KEY = os.getenv('THESPORTSDB_KEY', '123')
 THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 
-# 🤖 Motor Didasko AI (interno - Gemini Flash Lite súper rápido)
+#  Motor Didasko AI (interno - Gemini Flash Lite súper rápido)
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"
 
@@ -180,9 +180,9 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
 
 🎯 **GANADOR PROBABLE:** [Nombre del equipo o "Empate"]
 📊 **CONFIANZA:** [Número del 50 al 95]%
-⚽ **MARCADOR PREDICHO:** [Ej: 2-1]
+ **MARCADOR PREDICHO:** [Ej: 2-1]
 
-📝 **ANÁLISIS:**
+ **ANÁLISIS:**
 [3-4 oraciones cortas analizando la forma de ambos equipos, ventajas y factores clave]
 
 🔥 **DATO CURIOSO:**
@@ -479,7 +479,7 @@ def predecir_partido(evento_id):
             if vistas_hoy >= 1:
                 return jsonify({
                     'success': False, 'error': 'Límite diario alcanzado', 'requiere_vip': True,
-                    'mensaje': '🔒 Ya viste tu predicción gratis de hoy. Hazte VIP para ver todas.',
+                    'mensaje': ' Ya viste tu predicción gratis de hoy. Hazte VIP para ver todas.',
                     'precio': 'Aporte desde $4.000 COP en adelante',
                     'metodo': 'Contáctame por WhatsApp y te ayudo con tu código VIP'
                 }), 403
@@ -497,6 +497,26 @@ def predecir_partido(evento_id):
             return jsonify({'success': False, 'error': 'No se pudo obtener información del partido'}), 404
         
         partido = detalles['partido']
+        partido_finalizado = partido.get('strStatus') == 'FT'
+        
+        # Si el partido ya terminó, SOLO devolver caché (no generar nueva predicción)
+        if partido_finalizado:
+            if cache:
+                registrar_vista(email, evento_id)
+                return jsonify({
+                    'success': True, 'prediccion': cache['prediccion_texto'], 
+                    'ganador': cache['ganador_predicho'], 'confianza': cache['confianza'],
+                    'ia_usada': 'didasko-ai', 'desde_cache': True, 'es_vip': es_vip,
+                    'partido_finalizado': True
+                })
+            else:
+                return jsonify({
+                    'success': False, 
+                    'error': 'No hay predicción previa para este partido finalizado',
+                    'partido_finalizado': True, 'sin_prediccion_previa': True
+                }), 404
+        
+        # Si el partido NO ha terminado, generar predicción normal
         id_local = partido.get('idHomeTeam')
         id_visitante = partido.get('idAwayTeam')
         
