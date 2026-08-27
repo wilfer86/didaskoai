@@ -215,7 +215,7 @@
         <div id="profeta-resultado" class="contenido centrado"></div>
     </section>
 
-    <!-- 🎨 SECCIÓN GENERADOR DE MEMES -->
+    <!-- 🎨 SECCIÓN GENERADOR DE MEMES (CORREGIDO PARA VIDEO E IMAGEN) -->
     <section id="memes" class="pantalla">
         <div class="header-seccion movil-only">
             <button onclick="volverInicio()">⬅️</button>
@@ -223,17 +223,17 @@
         </div>
         <div class="contenido centrado" style="max-width: 800px; margin: 0 auto; padding: 20px;">
             <div class="upload-zone" style="border: 2px dashed #0088cc; padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 20px; background: rgba(0,136,204,0.05);">
-                <p style="font-size: 1.2em; margin-bottom: 15px; font-weight: bold;">📤 Sube tu meme viral (imagen)</p>
-                <input type="file" id="meme-file" accept="image/*" style="display:none" onchange="mostrarNombreArchivo(this)">
-                <button onclick="document.getElementById('meme-file').click()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold;">Seleccionar Imagen</button>
+                <p style="font-size: 1.2em; margin-bottom: 15px; font-weight: bold;">📤 Sube tu meme viral (video o imagen)</p>
+                <input type="file" id="meme-file" accept="video/*,image/*" style="display:none" onchange="mostrarNombreArchivo(this)">
+                <button onclick="document.getElementById('meme-file').click()" style="padding: 12px 24px; font-size: 16px; cursor: pointer; background: #0088cc; color: white; border: none; border-radius: 8px; font-weight: bold;">Seleccionar Archivo</button>
                 <p id="nombre-archivo" style="margin-top: 15px; color: #666; font-style: italic;"></p>
                 <button onclick="procesarMeme()" id="btn-procesar" style="margin-top: 15px; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; display: none;">🚀 Analizar y Generar 10 Guiones</button>
             </div>
 
             <div id="memes-loader" style="display: none; text-align: center; padding: 40px;">
                 <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0088cc; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
-                <p style="font-weight: bold;">🦉 El Profeta está analizando tu meme...</p>
-                <p class="mini" style="color: #666;">Creando situaciones absurdas (esto puede tomar 15-20 segundos)</p>
+                <p style="font-weight: bold;">🎬 El sistema está analizando tu archivo...</p>
+                <p class="mini" style="color: #666;">Creando situaciones absurdas (esto puede tomar 15-30 segundos)</p>
             </div>
 
             <div id="memes-resultados" class="memes-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
