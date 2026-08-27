@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.8 (Predicciones Retroactivas)
+# profeta.py - Profeta Deportivo V3.9 (Debug Mejorado + Fallback Total)
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
 # IA: Didasko AI (motor Gemini Flash Lite Latest)
-# Cache: Supabase para eficiencia con Fallback inteligente
-#  V3.8: Genera predicción retroactiva para partidos finalizados sin caché
+# Cache: Supabase para eficiencia
+# 🆕 V3.9: Mejor debug, muestra TODOS los partidos si no hay prioritarios
 # ===================================
 
 import os
@@ -30,7 +30,7 @@ THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"
 
-# 🌍 Ligas prioritarias con banners
+#  Ligas prioritarias con IDs de TheSportsDB
 LIGAS_PRIORITARIAS = {
     'champions': {'id': 4480, 'nombre': 'UEFA Champions League', 'pais': 'Europa', 'banner': 'assets/fondos/champions.jpeg'},
     'libertadores': {'id': 4482, 'nombre': 'Copa Libertadores', 'pais': 'Sudamérica', 'banner': 'assets/fondos/libertadores.jpeg'},
@@ -69,11 +69,21 @@ def obtener_partidos_del_dia(fecha=None):
     
     try:
         url = f"{THESPORTSDB_URL}/eventsday.php?d={fecha}&s=Soccer"
+        print(f" Consultando API: {url}")
         response = requests.get(url, timeout=10)
+        
+        print(f"📡 Response status: {response.status_code}")
         
         if response.status_code == 200:
             data = response.json()
             eventos = data.get('events', []) or []
+            print(f"✅ API devolvió {len(eventos)} partidos")
+            
+            # Debug: Mostrar IDs de ligas encontradas
+            if eventos:
+                ids_encontradas = set(p.get('idLeague') for p in eventos if p.get('idLeague'))
+                print(f"🏆 IDs de ligas encontradas: {ids_encontradas}")
+            
             return {'success': True, 'partidos': eventos, 'total': len(eventos)}
         
         if response.status_code == 429:
@@ -81,6 +91,7 @@ def obtener_partidos_del_dia(fecha=None):
         
         return {'success': False, 'error': f'Código {response.status_code}', 'partidos': [], 'total': 0}
     except Exception as e:
+        print(f"❌ Error en API: {str(e)}")
         return {'success': False, 'error': str(e), 'partidos': [], 'total': 0}
 
 
@@ -151,10 +162,9 @@ def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante, partid
         fecha = partido_info.get('dateEvent', '')
         estadio = partido_info.get('strVenue', '')
         
-        # Si el partido ya terminó, agregar el resultado al prompt para contexto
         resultado_real = ""
         if partido_finalizado and partido_info.get('intHomeScore') is not None:
-            resultado_real = f"\n⚠️ NOTA: Este partido YA SE JUGÓ. El resultado final fue {equipo_local} {partido_info.get('intHomeScore')} - {partido_info.get('intAwayScore')} {equipo_visitante}. Pero analiza SOLO como si no supieras el resultado, basándote en la forma previa de los equipos."
+            resultado_real = f"\n⚠️ NOTA: Este partido YA SE JUGÓ. El resultado final fue {equipo_local} {partido_info.get('intHomeScore')} - {partido_info.get('intAwayScore')} {equipo_visitante}. Pero analiza SOLO como si no supieras el resultado."
         
         forma_local_txt = ""
         if forma_local.get('success') and forma_local.get('partidos'):
@@ -171,8 +181,8 @@ def generar_prediccion_nvidia(partido_info, forma_local, forma_visitante, partid
         prompt = f"""Eres el Profeta Deportivo de Didasko AI, un experto analista de fútbol.{resultado_real}
 
 PARTIDO A ANALIZAR:
- Liga: {liga}
-⚽ {equipo_local} vs {equipo_visitante}
+🏆 Liga: {liga}
+ {equipo_local} vs {equipo_visitante}
 📅 Fecha: {fecha}
 🏟️ Estadio: {estadio}
 
@@ -186,15 +196,15 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
 
 🎯 **GANADOR PROBABLE:** [Nombre del equipo o "Empate"]
 📊 **CONFIANZA:** [Número del 50 al 95]%
- **MARCADOR PREDICHO:** [Ej: 2-1]
+⚽ **MARCADOR PREDICHO:** [Ej: 2-1]
 
 📝 **ANÁLISIS:**
 [3-4 oraciones cortas analizando la forma de ambos equipos, ventajas y factores clave]
 
-🔥 **DATO CURIOSO:**
+ **DATO CURIOSO:**
 [Un dato interesante o predicción específica]
 
-⚠️ Nota: Esta es una predicción con IA para entretenimiento. No es garantía de resultado."""
+️ Nota: Esta es una predicción con IA para entretenimiento. No es garantía de resultado."""
 
         url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
         payload = {
@@ -260,7 +270,7 @@ def obtener_prediccion_cache(partido_id):
             return pred
         return None
     except Exception as e:
-        print(f"️ Error buscando cache: {e}")
+        print(f"⚠️ Error buscando cache: {e}")
         return None
 
 
@@ -337,7 +347,7 @@ def verificar_vip(email):
                         return False
         return False
     except Exception as e:
-        print(f"⚠️ Error verificando VIP: {e}")
+        print(f"️ Error verificando VIP: {e}")
         return False
 
 
@@ -377,40 +387,79 @@ def partidos_hoy():
     """Devuelve los partidos importantes del día con Fallback inteligente."""
     try:
         hoy_bogota = obtener_fecha_hoy_bogota()
+        print(f"\n{'='*50}")
+        print(f"📅 Buscando partidos para: {hoy_bogota}")
+        print(f"{'='*50}")
+        
         resultado_api = obtener_partidos_del_dia(hoy_bogota)
         partidos_finales = []
         fuente_datos = 'api'
+        todos_los_partidos = []  # 🆕 Guardar TODOS los partidos
         
+        # Obtener IDs y nombres de ligas prioritarias
         ids_prioritarios = [str(liga['id']) for liga in LIGAS_PRIORITARIAS.values()]
         nombres_prioritarios = [liga['nombre'] for liga in LIGAS_PRIORITARIAS.values()]
         
+        print(f"🎯 Ligas prioritarias IDs: {ids_prioritarios}")
+        
+        # 1. Intentar usar datos frescos de la API
         if resultado_api['success'] and resultado_api['total'] > 0:
-            partidos_finales = [
+            todos_los_partidos = resultado_api['partidos']
+            
+            # Filtrar solo prioritarios
+            partidos_filtrados = [
                 p for p in resultado_api['partidos']
                 if str(p.get('idLeague', '')) in ids_prioritarios
             ]
-            for partido in partidos_finales:
+            
+            print(f"📊 Total partidos API: {len(todos_los_partidos)}")
+            print(f"✅ Partidos prioritarios: {len(partidos_filtrados)}")
+            
+            partidos_finales = partidos_filtrados
+            
+            # Actualizar caché con todos los partidos
+            for partido in todos_los_partidos:
                 guardar_partido_cache(partido)
+                
         else:
-            print(f"⚠️ API falló o sin partidos para {hoy_bogota}. Usando caché de Supabase.")
+            # 2. FALLBACK: Si la API falla, usar Supabase
+            print(f"⚠️ API falló o sin partidos. Usando caché de Supabase.")
             fuente_datos = 'cache'
             client = get_client()
             if client:
                 res = client.table('partidos').select('*').ilike('fecha_partido', f"{hoy_bogota}%").execute()
                 if res.data:
+                    todos_los_partidos = res.data
+                    print(f"📊 Total partidos en caché: {len(todos_los_partidos)}")
+                    
                     partidos_finales = [
                         p for p in res.data
                         if p.get('liga') in nombres_prioritarios
                     ]
+                    print(f"✅ Partidos prioritarios en caché: {len(partidos_finales)}")
+        
+        # 🆕 Si no hay prioritarios, devolver TODOS los partidos (mejor que nada)
+        if len(partidos_finales) == 0 and len(todos_los_partidos) > 0:
+            print(f"️ No hay partidos prioritarios, pero hay {len(todos_los_partidos)} partidos. Mostrando todos.")
+            partidos_finales = todos_los_partidos[:10]  # Máximo 10 para no saturar
+        
+        print(f"{'='*50}\n")
         
         return jsonify({
             'success': True,
             'fecha': hoy_bogota,
+            'total_todos': len(todos_los_partidos),
             'total_prioritarios': len(partidos_finales),
             'partidos': partidos_finales,
-            'fuente': fuente_datos
+            'fuente': fuente_datos,
+            'debug': {
+                'ids_prioritarios': ids_prioritarios,
+                'api_success': resultado_api['success'],
+                'api_total': resultado_api['total']
+            }
         })
     except Exception as e:
+        print(f"❌ Error en /hoy: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -457,7 +506,7 @@ def listar_ligas():
 
 
 # ===================================
-# 🔮 ENDPOINT PREDECIR CON IA (V3.8 - CON PREDICCIÓN RETROACTIVA)
+# 🔮 ENDPOINT PREDECIR CON IA (V3.9)
 # ===================================
 @profeta_bp.route('/predecir/<evento_id>', methods=['GET'])
 def predecir_partido(evento_id):
@@ -486,7 +535,6 @@ def predecir_partido(evento_id):
                     'metodo': 'Contáctame por WhatsApp y te ayudo con tu código VIP'
                 }), 403
         
-        # Si hay caché, devolverlo (sin importar si el partido terminó o no)
         if cache:
             registrar_vista(email, evento_id)
             return jsonify({
@@ -495,7 +543,6 @@ def predecir_partido(evento_id):
                 'desde_cache': True, 'es_vip': es_vip, 'partido_finalizado': False
             })
         
-        # Obtener detalles del partido
         detalles = obtener_detalles_partido(evento_id)
         if not detalles['success']:
             return jsonify({'success': False, 'error': 'No se pudo obtener información del partido'}), 404
@@ -503,26 +550,20 @@ def predecir_partido(evento_id):
         partido = detalles['partido']
         partido_finalizado = partido.get('strStatus') == 'FT'
         
-        #  V3.8: Si el partido terminó y no hay caché, generar predicción RETROACTIVA
-        # Esto permite mostrar qué habría predicho la IA
-        
         id_local = partido.get('idHomeTeam')
         id_visitante = partido.get('idAwayTeam')
         
         forma_local = obtener_ultimos_partidos_equipo(id_local) if id_local else {'success': False, 'partidos': []}
         forma_visitante = obtener_ultimos_partidos_equipo(id_visitante) if id_visitante else {'success': False, 'partidos': []}
         
-        # Generar predicción (retroactiva si el partido terminó, normal si no)
         prediccion = generar_prediccion_nvidia(partido, forma_local, forma_visitante, partido_finalizado=partido_finalizado)
         
         if not prediccion['success']:
             return jsonify(prediccion), 500
         
-        # Guardar en caché para futuras consultas
         guardar_prediccion_cache(partido, prediccion)
         registrar_vista(email, evento_id)
         
-        # Preparar datos del resultado real (si el partido terminó)
         resultado_real = None
         if partido_finalizado and partido.get('intHomeScore') is not None:
             resultado_real = {
@@ -541,8 +582,8 @@ def predecir_partido(evento_id):
             'desde_cache': False, 
             'es_vip': es_vip,
             'partido_finalizado': partido_finalizado,
-            'prediccion_retroactiva': partido_finalizado,  # 🆕 Indica que es retroactiva
-            'resultado_real': resultado_real  # 🆕 Resultado real del partido
+            'prediccion_retroactiva': partido_finalizado,
+            'resultado_real': resultado_real
         })
     except Exception as e:
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
@@ -600,7 +641,7 @@ def activar_vip():
 
 
 # ===================================
-# 🧪 TEST
+# 🧪 TEST Y DEBUG
 # ===================================
 @profeta_bp.route('/test', methods=['GET'])
 def test():
@@ -611,9 +652,29 @@ def test():
         api_ok = False
     
     return jsonify({
-        'status': 'ok', 'endpoint': 'profeta', 'version': 'V3.8 - Predicciones Retroactivas',
+        'status': 'ok', 'endpoint': 'profeta', 'version': 'V3.9 - Debug Mejorado',
         'thesportsdb_key': THESPORTSDB_KEY, 'didasko_ai_configurada': bool(GEMINI_API_KEY),
         'api_conectada': api_ok, 'ligas_configuradas': len(LIGAS_PRIORITARIAS),
         'sesion_activa': bool(session.get('usuario_email')), 'usuario_actual': session.get('usuario_email', 'no logueado'),
         'fecha_servidor_bogota': obtener_fecha_hoy_bogota()
+    })
+
+
+@profeta_bp.route('/debug', methods=['GET'])
+def debug():
+    """Endpoint de debug para ver qué está pasando con los partidos."""
+    hoy = obtener_fecha_hoy_bogota()
+    resultado = obtener_partidos_del_dia(hoy)
+    
+    ids_encontradas = set()
+    if resultado['success'] and resultado['partidos']:
+        ids_encontradas = set(str(p.get('idLeague')) for p in resultado['partidos'] if p.get('idLeague'))
+    
+    return jsonify({
+        'fecha_consulta': hoy,
+        'api_success': resultado['success'],
+        'total_partidos': resultado['total'],
+        'ids_ligas_encontradas': list(ids_encontradas),
+        'ids_ligas_prioritarias': [str(liga['id']) for liga in LIGAS_PRIORITARIAS.values()],
+        'partidos_ejemplo': resultado['partidos'][:3] if resultado['partidos'] else []
     })
