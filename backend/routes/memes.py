@@ -1,9 +1,9 @@
 # ===================================
 # memes.py - Generador de Memes Virales
-# Versión: 3.0 - NVIDIA (análisis) + Fal.ai (imágenes)
+# Versión: 4.0 - NVIDIA (análisis) + Pollinations.ai (imágenes - SIN API KEY)
 # ===================================
 # - Qwen2.5-VL-72B (NVIDIA): Análisis de imagen/video - GRATIS
-# - Fal.ai: Generación de imágenes - TUS CRÉDITOS PAGADOS
+# - Pollinations.ai: Generación de imágenes - 100% GRATIS SIN API KEY
 # ===================================
 
 import os
@@ -11,6 +11,7 @@ import base64
 import requests
 import json
 from flask import Blueprint, request, jsonify
+from urllib.parse import quote
 
 memes_bp = Blueprint('memes', __name__)
 
@@ -18,11 +19,9 @@ memes_bp = Blueprint('memes', __name__)
 # CONFIGURACIÓN DE APIS
 # ===================================
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
-FAL_API_KEY = os.getenv('FAL_API_KEY', '')
 
 # Endpoints
 NVIDIA_VISION_URL = "https://ai.api.nvidia.com/v1/gr/qwen/qwen2.5-vl-72b-instruct"
-FAL_API_URL = "https://api.fal.ai/models"
 
 # ===================================
 # ENDPOINT PRINCIPAL: ANALIZAR MEME
@@ -44,21 +43,21 @@ def analizar_y_generar_guiones():
         
         print(f"\n{'='*60}")
         print(f"📁 Archivo recibido: {filename}")
-        print(f" Tamaño: {file_size_mb:.2f} MB")
+        print(f"📊 Tamaño: {file_size_mb:.2f} MB")
         
         es_video = filename.endswith(('.mp4', '.mov', '.avi', '.webm', '.mkv'))
         
         # Analizar con Qwen-VL
-        print(" Analizando con Qwen2.5-VL-72B (NVIDIA)...")
+        print("🔍 Analizando con Qwen2.5-VL-72B (NVIDIA)...")
         analisis_meme = analizar_con_qwen_vl(file_data, es_video)
         
-        print(f"\n Análisis obtenido:")
+        print(f"\n📝 Análisis obtenido:")
         print(f"{'-'*60}")
         print(analisis_meme[:300] + "..." if len(analisis_meme) > 300 else analisis_meme)
         print(f"{'-'*60}\n")
         
         # Generar 10 guiones
-        print(" Generando 10 guiones absurdos con Qwen...")
+        print("🎨 Generando 10 guiones absurdos con Qwen...")
         guiones = generar_guiones_con_qwen(analisis_meme)
         
         print(f"✅ {len(guiones)} guiones generados exitosamente")
@@ -132,7 +131,7 @@ Responde en español de forma concisa."""
                 print(f"⚠️ Respuesta sin contenido: {data}")
                 return "Meme viral con situaciones cotidianas y humor"
         else:
-            print(f" NVIDIA API error {response.status_code}: {response.text[:200]}")
+            print(f"️ NVIDIA API error {response.status_code}: {response.text[:200]}")
             return "Meme viral con situaciones cotidianas"
         
     except Exception as e:
@@ -297,11 +296,14 @@ def generar_guiones_fallback():
 
 
 # ===================================
-# ENDPOINT: GENERAR IMAGEN (FAL.AI)
+# ENDPOINT: GENERAR IMAGEN (POLLINATIONS.AI)
 # ===================================
 @memes_bp.route('/generar-imagen', methods=['POST'])
 def generar_una_imagen():
-    """Genera imagen usando Fal.ai (tus créditos pagados)"""
+    """
+    Genera imagen usando Pollinations.ai (100% GRATIS - SIN API KEY)
+    Endpoint: https://image.pollinations.ai/prompt/{prompt}
+    """
     try:
         data = request.get_json()
         prompt = data.get('prompt', '')
@@ -309,62 +311,31 @@ def generar_una_imagen():
         if not prompt:
             return jsonify({'success': False, 'error': 'Prompt vacío'}), 400
         
-        print(f"\n🎨 Generando imagen con Fal.ai...")
+        print(f"\n🎨 Generando imagen con Pollinations.ai...")
         print(f"Prompt: {prompt[:100]}...")
         
-        # Fal.ai - Usar Flux (mejor calidad) o Stable Diffusion
-        # Endpoint: https://api.fal.ai/models/{model_id}
-        model_id = "fal-ai/flux/dev"  # o "fal-ai/stable-diffusion-v3-medium"
-        
-        url = f"{FAL_API_URL}/{model_id}"
-        
-        headers = {
-            "Authorization": f"Key {FAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # Pollinations.ai - NO requiere API key
+        # URL format: https://image.pollinations.ai/prompt/{encoded_prompt}
         
         # Mejorar prompt para estilo meme
         enhanced_prompt = f"""meme style, viral, humorous, high quality, realistic lighting, 
         exaggerated expressions, internet meme aesthetic, professional photography. {prompt}"""
         
-        payload = {
-            "prompt": enhanced_prompt,
-            "image_size": {
-                "width": 1024,
-                "height": 1024
-            },
-            "num_inference_steps": 28,
-            "guidance_scale": 3.5
-        }
+        # Codificar el prompt para URL
+        encoded_prompt = quote(enhanced_prompt)
         
-        print(f"📡 Enviando solicitud a Fal.ai ({model_id})...")
-        response = requests.post(url, json=payload, headers=headers, timeout=60)
+        # Construir URL de Pollinations
+        # Parámetros opcionales: width, height, seed, model, enhance
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={os.urandom(4).hex()}&enhance=true"
         
-        if response.status_code == 200:
-            data_resp = response.json()
-            
-            # Fal.ai devuelve la imagen en "images" array
-            if "images" in data_resp and len(data_resp["images"]) > 0:
-                image_url = data_resp["images"][0]["url"]
-                print(f"✅ Imagen generada exitosamente: {image_url[:80]}...")
-                
-                return jsonify({
-                    'success': True,
-                    'imagen_url': image_url
-                })
-            else:
-                print(f"⚠️ Sin imagen en respuesta: {data_resp}")
-                return jsonify({
-                    'success': False, 
-                    'error': 'Fal.ai no devolvió imagen'
-                }), 500
-        else:
-            error_msg = f"Error {response.status_code}: {response.text[:200]}"
-            print(f" {error_msg}")
-            return jsonify({
-                'success': False, 
-                'error': error_msg
-            }), 500
+        print(f" URL de Pollinations: {image_url[:100]}...")
+        
+        # Pollinations devuelve la imagen directamente
+        # La retornamos como URL para que el frontend la muestre
+        return jsonify({
+            'success': True,
+            'imagen_url': image_url
+        })
         
     except Exception as e:
         print(f"❌ Error generando imagen: {str(e)}")
@@ -385,14 +356,14 @@ def test_meme_api():
     return jsonify({
         'status': 'ok',
         'module': 'memes',
-        'version': '3.0 - NVIDIA + Fal.ai',
+        'version': '4.0 - NVIDIA + Pollinations.ai',
         'apis_configured': {
             'nvidia': bool(NVIDIA_API_KEY),
-            'fal_ai': bool(FAL_API_KEY)
+            'pollinations': 'NO REQUIRES API KEY - FREE'
         },
         'features': [
             'Análisis de imagen/video con Qwen2.5-VL-72B (NVIDIA - GRATIS)',
             'Generación de guiones con Qwen',
-            'Generación de imágenes con Fal.ai (CRÉDITOS PAGADOS)'
+            'Generación de imágenes con Pollinations.ai (100% GRATIS - SIN API KEY)'
         ]
     })
