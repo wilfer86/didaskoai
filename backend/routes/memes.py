@@ -1,10 +1,9 @@
 # ===================================
-# memes.py - Generador de Memes Virales con NVIDIA NIM
-# Versión: 2.0 - 100% NVIDIA (Qwen-VL + SDXL)
+# memes.py - Generador de Memes Virales
+# Versión: 3.0 - NVIDIA (análisis) + Fal.ai (imágenes)
 # ===================================
-# Usa NVIDIA NIM (gratuito con límites generosos):
-# - Qwen2.5-VL-72B: Análisis de imagen/video
-# - Stable Diffusion XL: Generación de imágenes
+# - Qwen2.5-VL-72B (NVIDIA): Análisis de imagen/video - GRATIS
+# - Fal.ai: Generación de imágenes - TUS CRÉDITOS PAGADOS
 # ===================================
 
 import os
@@ -12,18 +11,18 @@ import base64
 import requests
 import json
 from flask import Blueprint, request, jsonify
-from datetime import datetime
 
 memes_bp = Blueprint('memes', __name__)
 
 # ===================================
-# CONFIGURACIÓN DE APIS (SOLO NVIDIA)
+# CONFIGURACIÓN DE APIS
 # ===================================
 NVIDIA_API_KEY = os.getenv('NVIDIA_API_KEY', '')
+FAL_API_KEY = os.getenv('FAL_API_KEY', '')
 
-# Endpoints de NVIDIA NIM
+# Endpoints
 NVIDIA_VISION_URL = "https://ai.api.nvidia.com/v1/gr/qwen/qwen2.5-vl-72b-instruct"
-NVIDIA_IMAGE_URL = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
+FAL_API_URL = "https://api.fal.ai/models"
 
 # ===================================
 # ENDPOINT PRINCIPAL: ANALIZAR MEME
@@ -49,7 +48,7 @@ def analizar_y_generar_guiones():
         
         es_video = filename.endswith(('.mp4', '.mov', '.avi', '.webm', '.mkv'))
         
-        # Analizar con Qwen-VL (soporta imagen y video)
+        # Analizar con Qwen-VL
         print(" Analizando con Qwen2.5-VL-72B (NVIDIA)...")
         analisis_meme = analizar_con_qwen_vl(file_data, es_video)
         
@@ -58,7 +57,7 @@ def analizar_y_generar_guiones():
         print(analisis_meme[:300] + "..." if len(analisis_meme) > 300 else analisis_meme)
         print(f"{'-'*60}\n")
         
-        # Generar 10 guiones con Qwen-VL (también puede generar texto)
+        # Generar 10 guiones
         print(" Generando 10 guiones absurdos con Qwen...")
         guiones = generar_guiones_con_qwen(analisis_meme)
         
@@ -85,14 +84,9 @@ def analizar_y_generar_guiones():
 def analizar_con_qwen_vl(file_data, es_video):
     """Analiza imagen o video usando Qwen2.5-VL-72B de NVIDIA"""
     try:
-        # Codificar a base64
         file_base64 = base64.b64encode(file_data).decode('utf-8')
         
-        # Detectar MIME type
-        if es_video:
-            mime_type = "video/mp4"
-        else:
-            mime_type = "image/jpeg"
+        mime_type = "video/mp4" if es_video else "image/jpeg"
         
         headers = {
             "Authorization": f"Bearer {NVIDIA_API_KEY}",
@@ -101,13 +95,13 @@ def analizar_con_qwen_vl(file_data, es_video):
         
         prompt = """Analiza este meme viral en detalle:
 
-1. FORMATO VISUAL: ¿Cómo está estructurado? (texto arriba/abajo, escenas, etc.)
-2. ESTILO DE HUMOR: ¿Qué tipo de humor usa? (absurdo, sarcástico, relatable, dramático)
-3. SITUACIÓN: ¿Qué está pasando exactamente?
-4. ELEMENTOS CLAVE: Personas, animales, objetos, expresiones, texto visible
+1. FORMATO VISUAL: ¿Cómo está estructurado?
+2. ESTILO DE HUMOR: ¿Qué tipo de humor usa?
+3. SITUACIÓN: ¿Qué está pasando?
+4. ELEMENTOS CLAVE: Personas, animales, objetos, expresiones
 5. TONO: ¿Es exagerado, sutil, caótico?
 
-Responde en español de forma concisa pero completa."""
+Responde en español de forma concisa."""
 
         payload = {
             "model": "qwen/qwen2.5-vl-72b-instruct",
@@ -115,16 +109,8 @@ Responde en español de forma concisa pero completa."""
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{mime_type};base64,{file_base64}"
-                            }
-                        }
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{file_base64}"}}
                     ]
                 }
             ],
@@ -146,7 +132,7 @@ Responde en español de forma concisa pero completa."""
                 print(f"⚠️ Respuesta sin contenido: {data}")
                 return "Meme viral con situaciones cotidianas y humor"
         else:
-            print(f"️ NVIDIA API error {response.status_code}: {response.text[:200]}")
+            print(f" NVIDIA API error {response.status_code}: {response.text[:200]}")
             return "Meme viral con situaciones cotidianas"
         
     except Exception as e:
@@ -158,28 +144,28 @@ Responde en español de forma concisa pero completa."""
 # FUNCIÓN: GENERAR GUIONES CON QWEN
 # ===================================
 def generar_guiones_con_qwen(analisis_base):
-    """Genera 10 guiones usando Qwen-VL (modo texto)"""
+    """Genera 10 guiones usando Qwen-VL"""
     try:
         headers = {
             "Authorization": f"Bearer {NVIDIA_API_KEY}",
             "Content-Type": "application/json"
         }
         
-        prompt = f"""Basándote en este análisis de un meme viral:
+        prompt = f"""Basándote en este análisis:
 
 {analisis_base}
 
 Genera EXACTAMENTE 10 guiones NUEVOS para memes en el MISMO formato y estilo, 
-pero con situaciones ABSURDAS, EXAGERADAS y DIFERENTES.
+pero con situaciones ABSURDAS y EXAGERADAS.
 
 REGLAS:
-- Mantén el mismo formato visual del meme original
-- Usa humor ABSURDO y situaciones cotidianas muy exageradas
-- Los textos deben ser CORTOS (máximo 10 palabras cada uno)
-- Las situaciones deben ser RELATABLES pero RIDÍCULAS
-- Varía los temas: trabajo, relaciones, tecnología, mascotas, comida, etc.
+- Mantén el mismo formato visual
+- Usa humor ABSURDO
+- Textos CORTOS (máx 10 palabras)
+- Situaciones RELATABLES pero RIDÍCULAS
+- Varía los temas
 
-Responde SOLO con un array JSON válido con esta estructura EXACTA, sin texto adicional:
+Responde SOLO con JSON array:
 
 [
   {{
@@ -187,26 +173,21 @@ Responde SOLO con un array JSON válido con esta estructura EXACTA, sin texto ad
     "situacion": "Persona mirando el reloj con cara de desesperación",
     "texto_superior": "Cuando son las 5:59 PM",
     "texto_inferior": "Y tu jefe dice 'necesito hablar contigo'",
-    "prompt_imagen": "Office worker looking at clock with horrified expression, boss approaching, meme style, humorous"
+    "prompt_imagen": "Office worker looking at clock horrified, boss approaching, meme style"
   }}
 ]
 
-¡Genera 10 guiones variados y graciosos!"""
+¡Genera 10 guiones variados!"""
 
         payload = {
             "model": "qwen/qwen2.5-vl-72b-instruct",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 2048,
             "temperature": 0.8,
             "top_p": 0.9
         }
         
-        print(" Enviando a Qwen para generar guiones...")
+        print("📡 Enviando a Qwen para generar guiones...")
         response = requests.post(NVIDIA_VISION_URL, json=payload, headers=headers, timeout=60)
         
         if response.status_code == 200:
@@ -239,7 +220,7 @@ Responde SOLO con un array JSON válido con esta estructura EXACTA, sin texto ad
 
 
 def generar_guiones_fallback():
-    """Guiones de fallback si la IA falla"""
+    """Guiones de fallback"""
     print("⚠️ Usando guiones de fallback")
     return [
         {
@@ -247,7 +228,7 @@ def generar_guiones_fallback():
             "situacion": "Persona frustrada mirando el caos",
             "texto_superior": "Cuando intentas hacer algo simple",
             "texto_inferior": "Y todo sale terriblemente mal",
-            "prompt_imagen": "Person looking extremely frustrated surrounded by chaos, meme style"
+            "prompt_imagen": "Person looking extremely frustrated surrounded by chaos, meme style, humorous"
         },
         {
             "titulo": "Lunes por la mañana",
@@ -261,7 +242,7 @@ def generar_guiones_fallback():
             "situacion": "Billetera vacía con una polilla",
             "texto_superior": "Yo después de pagar cuentas",
             "texto_inferior": "¿Qué es esto de comer?",
-            "prompt_imagen": "Empty wallet with moth, broke meme, humorous"
+            "prompt_imagen": "Empty wallet with moth flying out, broke meme, humorous"
         },
         {
             "titulo": "Cuando alguien me saluda",
@@ -272,7 +253,7 @@ def generar_guiones_fallback():
         },
         {
             "titulo": "Mi productividad",
-            "situacion": "Persona trabajando 5 minutos y distrayéndose 3 horas",
+            "situacion": "Persona trabajando 5 minutos y distrayéndose",
             "texto_superior": "Yo: Voy a ser productivo hoy",
             "texto_inferior": "También yo: *ve un meme*",
             "prompt_imagen": "Person distracted by phone instead of working, procrastination meme"
@@ -293,7 +274,7 @@ def generar_guiones_fallback():
         },
         {
             "titulo": "Trabajo en equipo",
-            "situacion": "Persona trabajando sola mientras otros no hacen nada",
+            "situacion": "Persona trabajando sola",
             "texto_superior": "Trabajo en equipo:",
             "texto_inferior": "Yo trabajando, ellos en el nombre",
             "prompt_imagen": "One person doing all work in group project, frustrated meme"
@@ -307,7 +288,7 @@ def generar_guiones_fallback():
         },
         {
             "titulo": "Modo concentración",
-            "situacion": "Persona con cara de molestia extrema",
+            "situacion": "Persona con cara de molestia",
             "texto_superior": "Yo en modo concentración:",
             "texto_inferior": "*alguien respira fuerte*",
             "prompt_imagen": "Person with annoyed expression when someone makes noise, focus meme"
@@ -316,11 +297,11 @@ def generar_guiones_fallback():
 
 
 # ===================================
-# ENDPOINT: GENERAR IMAGEN (NVIDIA SDXL)
+# ENDPOINT: GENERAR IMAGEN (FAL.AI)
 # ===================================
 @memes_bp.route('/generar-imagen', methods=['POST'])
 def generar_una_imagen():
-    """Genera imagen usando Stable Diffusion XL de NVIDIA NIM"""
+    """Genera imagen usando Fal.ai (tus créditos pagados)"""
     try:
         data = request.get_json()
         prompt = data.get('prompt', '')
@@ -328,112 +309,71 @@ def generar_una_imagen():
         if not prompt:
             return jsonify({'success': False, 'error': 'Prompt vacío'}), 400
         
-        print(f"\n🎨 Generando imagen con NVIDIA SDXL...")
+        print(f"\n🎨 Generando imagen con Fal.ai...")
         print(f"Prompt: {prompt[:100]}...")
         
-        # NVIDIA NIM - Stable Diffusion XL
-        url = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
+        # Fal.ai - Usar Flux (mejor calidad) o Stable Diffusion
+        # Endpoint: https://api.fal.ai/models/{model_id}
+        model_id = "fal-ai/flux/dev"  # o "fal-ai/stable-diffusion-v3-medium"
         
-        # Mejor endpoint para SDXL en NVIDIA
-        sdxl_url = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
+        url = f"{FAL_API_URL}/{model_id}"
         
         headers = {
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
+            "Authorization": f"Key {FAL_API_KEY}",
             "Content-Type": "application/json"
         }
         
         # Mejorar prompt para estilo meme
-        enhanced_prompt = f"""meme style, viral, humorous, high quality, realistic lighting, exaggerated expressions, internet meme aesthetic. {prompt}"""
+        enhanced_prompt = f"""meme style, viral, humorous, high quality, realistic lighting, 
+        exaggerated expressions, internet meme aesthetic, professional photography. {prompt}"""
         
-        # Usar el endpoint correcto de NVIDIA para generación de imágenes
-        # NVIDIA tiene SDXL disponible en su catálogo de NIM
-        image_gen_url = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
-        
-        # NOTA: NVIDIA NIM para generación de imágenes usa un formato diferente
-        # Vamos a usar el endpoint de texto-a-imagen de NVIDIA
         payload = {
-            "model": "meta/llama-3.2-11b-vision-instruct",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"Describe visualmente esta escena para un meme: {prompt}"
-                }
-            ],
-            "max_tokens": 512,
-            "temperature": 0.7
+            "prompt": enhanced_prompt,
+            "image_size": {
+                "width": 1024,
+                "height": 1024
+            },
+            "num_inference_steps": 28,
+            "guidance_scale": 3.5
         }
         
-        # En realidad, para generación de imágenes con NVIDIA, necesitamos usar
-        # el endpoint específico de SDXL. Déjame usar el correcto:
-        
-        # NVIDIA NIM SDXL endpoint
-        sdxl_nvidia_url = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
-        
-        # Formato correcto para generación de imágenes en NVIDIA NIM
-        payload = {
-            "model": "meta/llama-3.2-11b-vision-instruct",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": enhanced_prompt
-                }
-            ],
-            "max_tokens": 1024,
-            "temperature": 0.7,
-            "top_p": 0.9
-        }
-        
-        print("📡 Enviando solicitud a NVIDIA...")
-        response = requests.post(sdxl_nvidia_url, json=payload, headers=headers, timeout=60)
+        print(f"📡 Enviando solicitud a Fal.ai ({model_id})...")
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
         
         if response.status_code == 200:
-            data_resp = response.json()
-            if "choices" in data_resp and len(data_resp["choices"]) > 0:
-                # Esto devuelve texto, no imagen
-                # Necesitamos usar el endpoint correcto de generación de imágenes
-                pass
-        
-        # Usar el endpoint correcto de NVIDIA para imágenes
-        # NVIDIA tiene un endpoint específico para SDXL
-        image_url = "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-11b-vision-instruct"
-        
-        # Formato correcto para generación de imágenes
-        payload = {
-            "model": "meta/llama-3.2-11b-vision-instruct",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": enhanced_prompt
-                }
-            ],
-            "max_tokens": 1024
-        }
-        
-        response = requests.post(image_url, json=payload, headers=headers, timeout=60)
-        
-        if response.status_code == 200:
-            # Si devuelve una imagen en base64 o URL
             data_resp = response.json()
             
-            # Verificar si hay imagen en la respuesta
-            if "choices" in data_resp:
-                content = data_resp["choices"][0]["message"]["content"]
-                # Si el contenido es una URL de imagen
-                if content.startswith("http"):
-                    return jsonify({
-                        'success': True,
-                        'imagen_url': content
-                    })
-        
-        # Si no funciona, devolver error informativo
-        return jsonify({
-            'success': False,
-            'error': 'NVIDIA NIM no soporta generación de imágenes directamente. Usa otro servicio.'
-        }), 500
+            # Fal.ai devuelve la imagen en "images" array
+            if "images" in data_resp and len(data_resp["images"]) > 0:
+                image_url = data_resp["images"][0]["url"]
+                print(f"✅ Imagen generada exitosamente: {image_url[:80]}...")
+                
+                return jsonify({
+                    'success': True,
+                    'imagen_url': image_url
+                })
+            else:
+                print(f"⚠️ Sin imagen en respuesta: {data_resp}")
+                return jsonify({
+                    'success': False, 
+                    'error': 'Fal.ai no devolvió imagen'
+                }), 500
+        else:
+            error_msg = f"Error {response.status_code}: {response.text[:200]}"
+            print(f" {error_msg}")
+            return jsonify({
+                'success': False, 
+                'error': error_msg
+            }), 500
         
     except Exception as e:
         print(f"❌ Error generando imagen: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': f'Error: {str(e)}'
+        }), 500
 
 
 # ===================================
@@ -445,13 +385,14 @@ def test_meme_api():
     return jsonify({
         'status': 'ok',
         'module': 'memes',
-        'version': '2.0 - NVIDIA NIM (Qwen-VL)',
+        'version': '3.0 - NVIDIA + Fal.ai',
         'apis_configured': {
-            'nvidia': bool(NVIDIA_API_KEY)
+            'nvidia': bool(NVIDIA_API_KEY),
+            'fal_ai': bool(FAL_API_KEY)
         },
         'features': [
-            'Análisis de imagen/video con Qwen2.5-VL-72B',
+            'Análisis de imagen/video con Qwen2.5-VL-72B (NVIDIA - GRATIS)',
             'Generación de guiones con Qwen',
-            'Generación de imágenes (pendiente de endpoint correcto)'
+            'Generación de imágenes con Fal.ai (CRÉDITOS PAGADOS)'
         ]
     })
