@@ -1,11 +1,11 @@
 # ===================================
-# profeta.py - Profeta Deportivo V3.9 (Debug Mejorado + Fallback Total)
+# profeta.py - Profeta Deportivo V3.10 (Prioriza Partidos Programados)
 # ===================================
 # Agente autónomo de predicciones deportivas
 # API: TheSportsDB (gratis)
 # IA: Didasko AI (motor Gemini Flash Lite Latest)
 # Cache: Supabase para eficiencia
-# 🆕 V3.9: Mejor debug, muestra TODOS los partidos si no hay prioritarios
+# 🆕 V3.10: Prioriza partidos programados, muestra hoy + mañana
 # ===================================
 
 import os
@@ -30,7 +30,7 @@ THESPORTSDB_URL = f"https://www.thesportsdb.com/api/v1/json/{THESPORTSDB_KEY}"
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent"
 
-#  Ligas prioritarias con IDs de TheSportsDB
+# 🌍 Ligas prioritarias con IDs de TheSportsDB
 LIGAS_PRIORITARIAS = {
     'champions': {'id': 4480, 'nombre': 'UEFA Champions League', 'pais': 'Europa', 'banner': 'assets/fondos/champions.jpeg'},
     'libertadores': {'id': 4482, 'nombre': 'Copa Libertadores', 'pais': 'Sudamérica', 'banner': 'assets/fondos/libertadores.jpeg'},
@@ -58,6 +58,12 @@ def obtener_fecha_hoy_bogota():
     tz_bogota = pytz.timezone('America/Bogota')
     return datetime.now(tz_bogota).strftime('%Y-%m-%d')
 
+def obtener_fecha_manana_bogota():
+    """Devuelve la fecha de MAÑANA en Colombia (YYYY-MM-DD)."""
+    tz_bogota = pytz.timezone('America/Bogota')
+    manana = datetime.now(tz_bogota) + timedelta(days=1)
+    return manana.strftime('%Y-%m-%d')
+
 # ===================================
 # FUNCIONES DE THESPORTSDB (OPTIMIZADAS)
 # ===================================
@@ -69,7 +75,7 @@ def obtener_partidos_del_dia(fecha=None):
     
     try:
         url = f"{THESPORTSDB_URL}/eventsday.php?d={fecha}&s=Soccer"
-        print(f" Consultando API: {url}")
+        print(f"🔍 Consultando API: {url}")
         response = requests.get(url, timeout=10)
         
         print(f"📡 Response status: {response.status_code}")
@@ -77,22 +83,22 @@ def obtener_partidos_del_dia(fecha=None):
         if response.status_code == 200:
             data = response.json()
             eventos = data.get('events', []) or []
-            print(f"✅ API devolvió {len(eventos)} partidos")
+            print(f"✅ API devolvió {len(eventos)} partidos para {fecha}")
             
             # Debug: Mostrar IDs de ligas encontradas
             if eventos:
                 ids_encontradas = set(p.get('idLeague') for p in eventos if p.get('idLeague'))
-                print(f"🏆 IDs de ligas encontradas: {ids_encontradas}")
+                print(f" IDs de ligas encontradas: {ids_encontradas}")
             
-            return {'success': True, 'partidos': eventos, 'total': len(eventos)}
+            return {'success': True, 'partidos': eventos, 'total': len(eventos), 'fecha': fecha}
         
         if response.status_code == 429:
-            return {'success': False, 'error': 'Límite de API alcanzado. Usando caché.', 'partidos': [], 'total': 0}
+            return {'success': False, 'error': 'Límite de API alcanzado.', 'partidos': [], 'total': 0, 'fecha': fecha}
         
-        return {'success': False, 'error': f'Código {response.status_code}', 'partidos': [], 'total': 0}
+        return {'success': False, 'error': f'Código {response.status_code}', 'partidos': [], 'total': 0, 'fecha': fecha}
     except Exception as e:
         print(f"❌ Error en API: {str(e)}")
-        return {'success': False, 'error': str(e), 'partidos': [], 'total': 0}
+        return {'success': False, 'error': str(e), 'partidos': [], 'total': 0, 'fecha': fecha}
 
 
 def obtener_partidos_liga_pasados(liga_id):
@@ -184,7 +190,7 @@ PARTIDO A ANALIZAR:
 🏆 Liga: {liga}
  {equipo_local} vs {equipo_visitante}
 📅 Fecha: {fecha}
-🏟️ Estadio: {estadio}
+️ Estadio: {estadio}
 
 FORMA RECIENTE DE {equipo_local}:
 {forma_local_txt if forma_local_txt else "Sin datos recientes disponibles"}
@@ -198,13 +204,13 @@ Genera una predicción PROFESIONAL y ENTRETENIDA en español con esta estructura
 📊 **CONFIANZA:** [Número del 50 al 95]%
 ⚽ **MARCADOR PREDICHO:** [Ej: 2-1]
 
-📝 **ANÁLISIS:**
+ **ANÁLISIS:**
 [3-4 oraciones cortas analizando la forma de ambos equipos, ventajas y factores clave]
 
- **DATO CURIOSO:**
+🔥 **DATO CURIOSO:**
 [Un dato interesante o predicción específica]
 
-️ Nota: Esta es una predicción con IA para entretenimiento. No es garantía de resultado."""
+⚠️ Nota: Esta es una predicción con IA para entretenimiento. No es garantía de resultado."""
 
         url = f"{GEMINI_URL}?key={GEMINI_API_KEY}"
         payload = {
@@ -347,7 +353,7 @@ def verificar_vip(email):
                         return False
         return False
     except Exception as e:
-        print(f"️ Error verificando VIP: {e}")
+        print(f"⚠️ Error verificando VIP: {e}")
         return False
 
 
@@ -379,83 +385,94 @@ def registrar_vista(email, partido_id):
 
 
 # ===================================
-# 🎯 ENDPOINTS PÚBLICOS
+# 🎯 ENDPOINTS PÚBLICOS (V3.10 - PRIORIZA PROGRAMADOS)
 # ===================================
 
 @profeta_bp.route('/hoy', methods=['GET'])
 def partidos_hoy():
-    """Devuelve los partidos importantes del día con Fallback inteligente."""
+    """Devuelve los partidos de hoy y mañana, priorizando los programados."""
     try:
         hoy_bogota = obtener_fecha_hoy_bogota()
+        manana_bogota = obtener_fecha_manana_bogota()
+        
         print(f"\n{'='*50}")
-        print(f"📅 Buscando partidos para: {hoy_bogota}")
+        print(f"📅 Buscando partidos para HOY: {hoy_bogota}")
+        print(f" Buscando partidos para MAÑANA: {manana_bogota}")
         print(f"{'='*50}")
         
-        resultado_api = obtener_partidos_del_dia(hoy_bogota)
-        partidos_finales = []
-        fuente_datos = 'api'
-        todos_los_partidos = []  # 🆕 Guardar TODOS los partidos
+        # Obtener partidos de hoy y mañana
+        resultado_hoy = obtener_partidos_del_dia(hoy_bogota)
+        resultado_manana = obtener_partidos_del_dia(manana_bogota)
         
-        # Obtener IDs y nombres de ligas prioritarias
+        todos_los_partidos = []
+        partidos_programados = []  # 🆕 Solo partidos NO finalizados
+        partidos_finalizados = []  # 🆕 Solo partidos finalizados
+        
         ids_prioritarios = [str(liga['id']) for liga in LIGAS_PRIORITARIAS.values()]
         nombres_prioritarios = [liga['nombre'] for liga in LIGAS_PRIORITARIAS.values()]
         
-        print(f"🎯 Ligas prioritarias IDs: {ids_prioritarios}")
+        # Combinar partidos de hoy y mañana
+        if resultado_hoy['success']:
+            todos_los_partidos.extend(resultado_hoy['partidos'])
+        if resultado_manana['success']:
+            todos_los_partidos.extend(resultado_manana['partidos'])
         
-        # 1. Intentar usar datos frescos de la API
-        if resultado_api['success'] and resultado_api['total'] > 0:
-            todos_los_partidos = resultado_api['partidos']
-            
-            # Filtrar solo prioritarios
+        print(f"📊 Total partidos encontrados (hoy + mañana): {len(todos_los_partidos)}")
+        
+        # 🆕 Separar programados de finalizados
+        for partido in todos_los_partidos:
+            if partido.get('strStatus') == 'FT':
+                partidos_finalizados.append(partido)
+            else:
+                partidos_programados.append(partido)
+        
+        print(f"✅ Partidos programados: {len(partidos_programados)}")
+        print(f"✅ Partidos finalizados: {len(partidos_finalizados)}")
+        
+        # Guardar en caché
+        for partido in todos_los_partidos:
+            guardar_partido_cache(partido)
+        
+        # 🆕 PRIORIDAD: Mostrar programados primero
+        if len(partidos_programados) > 0:
+            print(f"🎯 Mostrando {len(partidos_programados)} partidos programados")
+            partidos_finales = partidos_programados
+            tipo_respuesta = 'programados'
+        elif len(partidos_finalizados) > 0:
+            print(f"️ No hay programados, mostrando {len(partidos_finalizados)} finalizados")
+            partidos_finales = partidos_finalizados
+            tipo_respuesta = 'finalizados'
+        else:
+            print(f" No hay partidos para hoy ni mañana")
+            partidos_finales = []
+            tipo_respuesta = 'vacio'
+        
+        # Filtrar prioritarios si hay muchos
+        if len(partidos_finales) > 15:
             partidos_filtrados = [
-                p for p in resultado_api['partidos']
+                p for p in partidos_finales
                 if str(p.get('idLeague', '')) in ids_prioritarios
             ]
-            
-            print(f"📊 Total partidos API: {len(todos_los_partidos)}")
-            print(f"✅ Partidos prioritarios: {len(partidos_filtrados)}")
-            
-            partidos_finales = partidos_filtrados
-            
-            # Actualizar caché con todos los partidos
-            for partido in todos_los_partidos:
-                guardar_partido_cache(partido)
-                
-        else:
-            # 2. FALLBACK: Si la API falla, usar Supabase
-            print(f"⚠️ API falló o sin partidos. Usando caché de Supabase.")
-            fuente_datos = 'cache'
-            client = get_client()
-            if client:
-                res = client.table('partidos').select('*').ilike('fecha_partido', f"{hoy_bogota}%").execute()
-                if res.data:
-                    todos_los_partidos = res.data
-                    print(f"📊 Total partidos en caché: {len(todos_los_partidos)}")
-                    
-                    partidos_finales = [
-                        p for p in res.data
-                        if p.get('liga') in nombres_prioritarios
-                    ]
-                    print(f"✅ Partidos prioritarios en caché: {len(partidos_finales)}")
-        
-        # 🆕 Si no hay prioritarios, devolver TODOS los partidos (mejor que nada)
-        if len(partidos_finales) == 0 and len(todos_los_partidos) > 0:
-            print(f"️ No hay partidos prioritarios, pero hay {len(todos_los_partidos)} partidos. Mostrando todos.")
-            partidos_finales = todos_los_partidos[:10]  # Máximo 10 para no saturar
+            if len(partidos_filtrados) > 0:
+                partidos_finales = partidos_filtrados[:15]
         
         print(f"{'='*50}\n")
         
         return jsonify({
             'success': True,
-            'fecha': hoy_bogota,
-            'total_todos': len(todos_los_partidos),
-            'total_prioritarios': len(partidos_finales),
+            'fecha_hoy': hoy_bogota,
+            'fecha_manana': manana_bogota,
+            'total_programados': len(partidos_programados),
+            'total_finalizados': len(partidos_finalizados),
+            'total_mostrando': len(partidos_finales),
+            'tipo': tipo_respuesta,
             'partidos': partidos_finales,
-            'fuente': fuente_datos,
             'debug': {
                 'ids_prioritarios': ids_prioritarios,
-                'api_success': resultado_api['success'],
-                'api_total': resultado_api['total']
+                'api_hoy_success': resultado_hoy['success'],
+                'api_hoy_total': resultado_hoy['total'],
+                'api_manana_success': resultado_manana['success'],
+                'api_manana_total': resultado_manana['total']
             }
         })
     except Exception as e:
@@ -506,7 +523,7 @@ def listar_ligas():
 
 
 # ===================================
-# 🔮 ENDPOINT PREDECIR CON IA (V3.9)
+# 🔮 ENDPOINT PREDECIR CON IA (V3.10)
 # ===================================
 @profeta_bp.route('/predecir/<evento_id>', methods=['GET'])
 def predecir_partido(evento_id):
@@ -652,7 +669,7 @@ def test():
         api_ok = False
     
     return jsonify({
-        'status': 'ok', 'endpoint': 'profeta', 'version': 'V3.9 - Debug Mejorado',
+        'status': 'ok', 'endpoint': 'profeta', 'version': 'V3.10 - Prioriza Programados',
         'thesportsdb_key': THESPORTSDB_KEY, 'didasko_ai_configurada': bool(GEMINI_API_KEY),
         'api_conectada': api_ok, 'ligas_configuradas': len(LIGAS_PRIORITARIAS),
         'sesion_activa': bool(session.get('usuario_email')), 'usuario_actual': session.get('usuario_email', 'no logueado'),
@@ -664,17 +681,31 @@ def test():
 def debug():
     """Endpoint de debug para ver qué está pasando con los partidos."""
     hoy = obtener_fecha_hoy_bogota()
-    resultado = obtener_partidos_del_dia(hoy)
+    manana = obtener_fecha_manana_bogota()
+    
+    resultado_hoy = obtener_partidos_del_dia(hoy)
+    resultado_manana = obtener_partidos_del_dia(manana)
     
     ids_encontradas = set()
-    if resultado['success'] and resultado['partidos']:
-        ids_encontradas = set(str(p.get('idLeague')) for p in resultado['partidos'] if p.get('idLeague'))
+    programados = []
+    finalizados = []
+    
+    for resultado in [resultado_hoy, resultado_manana]:
+        if resultado['success'] and resultado['partidos']:
+            for p in resultado['partidos']:
+                ids_encontradas.add(str(p.get('idLeague')))
+                if p.get('strStatus') == 'FT':
+                    finalizados.append(p)
+                else:
+                    programados.append(p)
     
     return jsonify({
-        'fecha_consulta': hoy,
-        'api_success': resultado['success'],
-        'total_partidos': resultado['total'],
+        'fecha_hoy': hoy,
+        'fecha_manana': manana,
+        'total_programados': len(programados),
+        'total_finalizados': len(finalizados),
         'ids_ligas_encontradas': list(ids_encontradas),
         'ids_ligas_prioritarias': [str(liga['id']) for liga in LIGAS_PRIORITARIAS.values()],
-        'partidos_ejemplo': resultado['partidos'][:3] if resultado['partidos'] else []
+        'ejemplos_programados': programados[:3] if programados else [],
+        'ejemplos_finalizados': finalizados[:3] if finalizados else []
     })
