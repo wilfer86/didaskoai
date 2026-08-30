@@ -1,12 +1,21 @@
-// profeta.js - Didasko AI V4.1
+// ===================================
+// profeta.js - Didasko AI V3.5 (Predicciones Retroactivas + Resultado Real)
+// Profeta Deportivo 🌐 con predicciones IA
+// ===================================
+
+let ligaSeleccionada = null;
 let profetaCargado = false;
 
-function convertirHoraColombia(horaUTC, fechaUTC) {
+// ===================================
+// 🕒 FUNCIÓN AUXILIAR: Convertir UTC a Hora Colombia
+// ===================================
+function convertirHoraColombia(horaUTC) {
     if (!horaUTC) return '--:--';
     try {
-        const horaLimpia = horaUTC.substring(0, 5);
-        const fechaHoraUTC = new Date(`${fechaUTC}T${horaLimpia}:00Z`);
-        return fechaHoraUTC.toLocaleTimeString('es-CO', {
+        const [hours, minutes] = horaUTC.substring(0, 5).split(':').map(Number);
+        const fechaUTC = new Date();
+        fechaUTC.setUTCHours(hours, minutes, 0, 0);
+        return fechaUTC.toLocaleTimeString('es-CO', {
             timeZone: 'America/Bogota',
             hour: '2-digit',
             minute: '2-digit',
@@ -17,17 +26,28 @@ function convertirHoraColombia(horaUTC, fechaUTC) {
     }
 }
 
+// ===================================
+//  Cargar Profeta al abrir sección
+// ===================================
 async function cargarProfeta() {
     if (profetaCargado) return;
-    await mostrarPartidosHoy();
+    mostrarPartidosHoy();
     profetaCargado = true;
 }
 
+// ===================================
+//  Mostrar partidos del día + ligas
+// ===================================
 async function mostrarPartidosHoy() {
     const contenedor = document.getElementById('profeta-resultado');
     if (!contenedor) return;
 
-    contenedor.innerHTML = '<div class="profeta-loader"><span class="loader"></span><p>🦉 Cargando partidos...</p></div>';
+    contenedor.innerHTML = `
+        <div class="profeta-loader">
+            <span class="loader"></span>
+            <p>🦉 Consultando el Profeta Deportivo...</p>
+        </div>
+    `;
 
     try {
         const [partidosRes, ligasRes] = await Promise.all([
@@ -40,36 +60,54 @@ async function mostrarPartidosHoy() {
 
         renderizarProfeta(data, ligasData);
     } catch (error) {
-        contenedor.innerHTML = `<div class="mensaje-error"> Error: ${error.message}</div>`;
+        contenedor.innerHTML = `
+            <div class="mensaje-error">
+                ❌ Error cargando el Profeta: ${error.message}
+            </div>
+        `;
     }
 }
 
+// ===================================
+// 🌐 Renderizar Profeta principal
+// ===================================
 function renderizarProfeta(dataPartidos, dataLigas) {
     const contenedor = document.getElementById('profeta-resultado');
     if (!contenedor) return;
 
     const fecha = new Date().toLocaleDateString('es-CO', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
     });
 
-    let htmlPartidos = '';
+    let htmlPartidosHoy = '';
     if (dataPartidos.success && dataPartidos.partidos && dataPartidos.partidos.length > 0) {
-        htmlPartidos = `
+        htmlPartidosHoy = `
             <div class="profeta-partidos-hoy">
-                <h3 class="profeta-subtitulo">🏆 Partidos</h3>
+                <h3 class="profeta-subtitulo">🏆 Partidos de hoy</h3>
                 <div class="partidos-lista">
                     ${dataPartidos.partidos.map(p => renderizarPartido(p)).join('')}
                 </div>
             </div>
         `;
     } else {
-        htmlPartidos = `
+        // 🛠️ CORRECCIÓN MÍNIMA: Se eliminó la frase "de ligas prioritarias" que causaba el error visual
+        htmlPartidosHoy = `
             <div class="profeta-info-banner">
                 <div class="info-item">
                     <span class="info-icono">📅</span>
                     <div class="info-texto">
-                        <p><strong>No hay partidos hoy</strong></p>
-                        <p class="mini">Selecciona una liga abajo</p>
+                        <p><strong>No hay partidos programados para hoy</strong></p>
+                        <p class="mini">Selecciona una liga abajo para ver su calendario</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icono">🦉</span>
+                    <div class="info-texto">
+                        <p><strong>Powered by Didasko AI</strong></p>
+                        <p class="mini">Predicciones inteligentes actualizadas cada día</p>
                     </div>
                 </div>
             </div>
@@ -82,9 +120,9 @@ function renderizarProfeta(dataPartidos, dataLigas) {
             <div class="profeta-ligas">
                 <div class="ligas-banners">
                     ${Object.entries(dataLigas.ligas).map(([key, liga]) => `
-                        <div class="liga-banner-card" onclick="verLiga('${key}', '${liga.nombre}', '${liga.banner}')">
+                        <div class="liga-banner-card" onclick="verLiga('${key}', '${liga.nombre.replace(/'/g, "\\'")}', '${liga.banner}')">
                             <div class="liga-banner-img">
-                                <img src="${liga.banner}" alt="${liga.nombre}" onerror="this.style.display='none'">
+                                <img src="${liga.banner}" alt="${liga.nombre}" onerror="this.style.display='none'; this.parentElement.classList.add('sin-imagen');">
                             </div>
                             <div class="liga-banner-info">
                                 <h4>${liga.nombre}</h4>
@@ -102,45 +140,31 @@ function renderizarProfeta(dataPartidos, dataLigas) {
             <h2>🌐 Profeta Deportivo</h2>
             <p class="profeta-fecha">📅 ${fecha}</p>
         </div>
-        ${htmlPartidos}
+        
+        ${htmlPartidosHoy}
         ${htmlLigas}
     `;
 }
 
+// ===================================
+// 🌐 Renderizar UN partido (CON CORRECCIÓN DE HORA)
+// ===================================
 function renderizarPartido(partido) {
-    // Obtener nombres reales de equipos
-    const nombreLocal = partido.strHomeTeam && partido.strHomeTeam !== 'Local' 
-        ? partido.strHomeTeam 
-        : 'Equipo Local';
+    const escudoLocal = partido.strHomeTeamBadge || 'assets/logo/buho-mascota.png';
+    const escudoVisita = partido.strAwayTeamBadge || 'assets/logo/buho-mascota.png';
     
-    const nombreVisitante = partido.strAwayTeam && partido.strAwayTeam !== 'Visitante' 
-        ? partido.strAwayTeam 
-        : 'Equipo Visitante';
+    const hora = convertirHoraColombia(partido.strTime);
+    const estado = partido.strStatus === 'FT' ? '✅ Finalizado' : '🕒 Programado';
     
-    // Obtener escudos reales
-    const escudoLocal = (partido.strHomeTeamBadge && partido.strHomeTeamBadge.startsWith('http')) 
-        ? partido.strHomeTeamBadge 
-        : 'assets/logo/buho-mascota.png';
-    
-    const escudoVisitante = (partido.strAwayTeamBadge && partido.strAwayTeamBadge.startsWith('http')) 
-        ? partido.strAwayTeamBadge 
-        : 'assets/logo/buho-mascota.png';
-    
-    // Convertir hora
-    const horaColombia = convertirHoraColombia(partido.strTime, partido.dateEvent);
-    
-    // Determinar estado
-    const estado = partido.strStatus === 'FT' ? '✅ Finalizado' : 
-                   (partido.strStatus === 'LIVE' ? '🔴 EN VIVO' : `🕒 ${horaColombia}`);
-    
-    // Marcador o hora
     let resultado = '';
-    if (partido.intHomeScore !== null && partido.intAwayScore !== null && partido.strStatus === 'FT') {
-        resultado = `<div class="partido-resultado"><span class="resultado-marcador">${partido.intHomeScore} - ${partido.intAwayScore}</span></div>`;
-    } else if (partido.strStatus === 'LIVE' && partido.intHomeScore !== null) {
-        resultado = `<div class="partido-resultado"><span class="resultado-marcador">${partido.intHomeScore} - ${partido.intAwayScore || 0}</span></div>`;
+    if (partido.intHomeScore !== null && partido.intAwayScore !== null) {
+        resultado = `
+            <div class="partido-resultado">
+                <span class="resultado-marcador">${partido.intHomeScore} - ${partido.intAwayScore}</span>
+            </div>
+        `;
     } else {
-        resultado = `<div class="partido-hora">🕒 ${horaColombia}</div>`;
+        resultado = `<div class="partido-hora">🕒 ${hora}</div>`;
     }
 
     return `
@@ -148,13 +172,13 @@ function renderizarPartido(partido) {
             <div class="partido-liga">🏆 ${partido.strLeague || 'Liga'}</div>
             <div class="partido-equipos">
                 <div class="equipo local">
-                    <img src="${escudoLocal}" alt="${nombreLocal}" onerror="this.src='assets/logo/buho-mascota.png'">
-                    <p>${nombreLocal}</p>
+                    <img src="${escudoLocal}" alt="${partido.strHomeTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
+                    <p>${partido.strHomeTeam}</p>
                 </div>
                 ${resultado}
                 <div class="equipo visitante">
-                    <img src="${escudoVisitante}" alt="${nombreVisitante}" onerror="this.src='assets/logo/buho-mascota.png'">
-                    <p>${nombreVisitante}</p>
+                    <img src="${escudoVisita}" alt="${partido.strAwayTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
+                    <p>${partido.strAwayTeam}</p>
                 </div>
             </div>
             <div class="partido-info-extra">
@@ -165,9 +189,19 @@ function renderizarPartido(partido) {
     `;
 }
 
+// ===================================
+// 🏆 Ver partidos de una liga
+// ===================================
 async function verLiga(ligaKey, ligaNombre, ligaBanner) {
     const contenedor = document.getElementById('profeta-resultado');
-    contenedor.innerHTML = `<div class="profeta-loader"><span class="loader"></span><p>🦉 Cargando ${ligaNombre}...</p></div>`;
+    ligaSeleccionada = ligaKey;
+
+    contenedor.innerHTML = `
+        <div class="profeta-loader">
+            <span class="loader"></span>
+            <p>🦉 Cargando ${ligaNombre}...</p>
+        </div>
+    `;
 
     try {
         const [pasadosRes, proximosRes] = await Promise.all([
@@ -180,171 +214,510 @@ async function verLiga(ligaKey, ligaNombre, ligaBanner) {
 
         renderizarLigaCompleta(ligaNombre, ligaBanner, pasados, proximos);
     } catch (error) {
-        contenedor.innerHTML = `<div class="mensaje-error">❌ Error: ${error.message}</div>`;
+        contenedor.innerHTML = `
+            <div class="mensaje-error">❌ Error: ${error.message}</div>
+            <button onclick="volverAProfeta()" class="btn-otra">🔙 Volver</button>
+        `;
     }
 }
 
+// ===================================
+// 🌐 Renderizar liga completa
+// ===================================
 function renderizarLigaCompleta(nombre, banner, pasados, proximos) {
     const contenedor = document.getElementById('profeta-resultado');
 
-    const htmlProximos = proximos.success && proximos.partidos && proximos.partidos.length > 0
-        ? `<div class="partidos-lista">${proximos.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}</div>`
-        : '<p class="sub-mensaje">No hay próximos partidos</p>';
+    let htmlProximos = '<p class="sub-mensaje">No hay próximos partidos</p>';
+    if (proximos.success && proximos.partidos && proximos.partidos.length > 0) {
+        htmlProximos = `
+            <div class="partidos-lista">
+                ${proximos.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}
+            </div>
+        `;
+    }
 
-    const htmlPasados = pasados.success && pasados.partidos && pasados.partidos.length > 0
-        ? `<div class="partidos-lista">${pasados.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}</div>`
-        : '<p class="sub-mensaje">No hay resultados recientes</p>';
+    let htmlPasados = '<p class="sub-mensaje">No hay partidos recientes</p>';
+    if (pasados.success && pasados.partidos && pasados.partidos.length > 0) {
+        htmlPasados = `
+            <div class="partidos-lista">
+                ${pasados.partidos.slice(0, 15).map(p => renderizarPartido(p)).join('')}
+            </div>
+        `;
+    }
 
     contenedor.innerHTML = `
         <div class="liga-header-banner" style="background-image: url('${banner}');">
             <div class="liga-header-overlay">
-                <button onclick="volverAProfeta()" class="btn-volver-liga">🔙 Volver</button>
+                <button onclick="volverAProfeta()" class="btn-volver-liga"> Volver</button>
                 <h2>${nombre}</h2>
             </div>
         </div>
+        
         <div class="liga-seccion">
-            <h3 class="profeta-subtitulo">⏩ Próximos</h3>
+            <h3 class="profeta-subtitulo">⏩ Próximos partidos</h3>
             ${htmlProximos}
         </div>
+        
         <div class="liga-seccion">
-            <h3 class="profeta-subtitulo">✅ Resultados</h3>
+            <h3 class="profeta-subtitulo">✅ Últimos resultados</h3>
             ${htmlPasados}
         </div>
     `;
 }
 
+// ===================================
+// 🔍 Ver detalle de un partido
+// ===================================
 async function verDetallePartido(eventoId) {
     const contenedor = document.getElementById('profeta-resultado');
-    contenedor.innerHTML = '<div class="profeta-loader"><span class="loader"></span><p>🦉 Cargando...</p></div>';
+
+    contenedor.innerHTML = `
+        <div class="profeta-loader">
+            <span class="loader"></span>
+            <p>🦉 Analizando el partido...</p>
+        </div>
+    `;
 
     try {
-        const response = await fetch(`/api/profeta/partido/${eventoId}`, { credentials: 'include' });
+        const response = await fetch(`/api/profeta/partido/${eventoId}`, {
+            credentials: 'include'
+        });
         const data = await response.json();
 
         if (data.success && data.partido) {
             renderizarDetallePartido(data.partido);
         } else {
-            throw new Error('No se pudo cargar');
+            throw new Error('No se pudo cargar el partido');
         }
     } catch (error) {
-        contenedor.innerHTML = `<div class="mensaje-error">❌ Error: ${error.message}</div><button onclick="volverAProfeta()" class="btn-otra">🔙 Volver</button>`;
+        contenedor.innerHTML = `
+            <div class="mensaje-error">❌ Error: ${error.message}</div>
+            <button onclick="volverAProfeta()" class="btn-otra">🔙 Volver</button>
+        `;
     }
 }
 
+// ===================================
+// 🌐 Renderizar detalle (CON PREDICCIONES RETROACTIVAS)
+// ===================================
 function renderizarDetallePartido(p) {
     const contenedor = document.getElementById('profeta-resultado');
-    const horaColombia = convertirHoraColombia(p.strTime, p.dateEvent);
+
+    const escudoLocal = p.strHomeTeamBadge || 'assets/logo/buho-mascota.png';
+    const escudoVisita = p.strAwayTeamBadge || 'assets/logo/buho-mascota.png';
+    const poster = p.strPoster || p.strThumb || p.strBanner;
     const partidoFinalizado = p.strStatus === 'FT';
+
+    const horaDetalle = convertirHoraColombia(p.strTime);
 
     let resultado = '';
     if (p.intHomeScore !== null && p.intAwayScore !== null) {
         resultado = `<h1 class="marcador-grande">${p.intHomeScore} - ${p.intAwayScore}</h1>`;
     } else {
-        resultado = `<h2 class="hora-grande"> ${horaColombia}</h2>`;
+        resultado = `<h2 class="hora-grande">🕒 ${horaDetalle}</h2>`;
     }
 
-    const accionHTML = partidoFinalizado
-        ? `<button onclick="verPrediccionPasada('${p.idEvent}')" class="btn-prediccion-ia">🔍 Ver predicción pasada</button>`
-        : `<button onclick="verPrediccionIA('${p.idEvent}')" class="btn-prediccion-ia">🔮 Ver Predicción IA</button>`;
+    let videoHTML = '';
+    if (p.strVideo) {
+        const videoId = p.strVideo.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+        if (videoId) {
+            videoHTML = `
+                <div class="partido-video">
+                    <h3>📹 Highlights del partido</h3>
+                    <iframe src="https://www.youtube.com/embed/${videoId[1]}"
+                        frameborder="0" allowfullscreen></iframe>
+                </div>
+            `;
+        }
+    }
+
+    // Botón según estado del partido
+    let accionPrediccionHTML = '';
+    if (partidoFinalizado) {
+        accionPrediccionHTML = `
+            <div class="prediccion-boton-container">
+                <button onclick="verPrediccionPasada('${p.idEvent}')" class="btn-prediccion-ia btn-prediccion-pasada">
+                    🔍 Ver qué predijo el Profeta
+                </button>
+                <p class="prediccion-hint">🦉 Compara la predicción con el resultado real</p>
+            </div>
+        `;
+    } else {
+        accionPrediccionHTML = `
+            <div class="prediccion-boton-container">
+                <button onclick="verPrediccionIA('${p.idEvent}')" class="btn-prediccion-ia">
+                    🔮 Ver Predicción con IA
+                </button>
+                <p class="prediccion-hint">🦉 Análisis inteligente powered by Didasko AI</p>
+            </div>
+        `;
+    }
 
     contenedor.innerHTML = `
         <div class="detalle-header">
             <button onclick="volverAProfeta()" class="btn-volver-liga">🔙 Volver</button>
-            <h2> Detalles</h2>
+            <h2> Detalles del Partido</h2>
         </div>
+        
+        ${poster ? `<img src="${poster}" class="detalle-poster" alt="Poster">` : ''}
+        
         <div class="detalle-partido">
             <div class="detalle-liga">🏆 ${p.strLeague}</div>
+            
             <div class="detalle-equipos">
-                <div class="detalle-equipo"><h3>${p.strHomeTeam || 'Local'}</h3></div>
-                <div class="detalle-vs">${resultado}</div>
-                <div class="detalle-equipo"><h3>${p.strAwayTeam || 'Visitante'}</h3></div>
+                <div class="detalle-equipo">
+                    <img src="${escudoLocal}" alt="${p.strHomeTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
+                    <h3>${p.strHomeTeam}</h3>
+                </div>
+                
+                <div class="detalle-vs">
+                    ${resultado}
+                    <p class="detalle-fecha">📅 ${p.dateEvent}</p>
+                </div>
+                
+                <div class="detalle-equipo">
+                    <img src="${escudoVisita}" alt="${p.strAwayTeam}" onerror="this.src='assets/logo/buho-mascota.png'">
+                    <h3>${p.strAwayTeam}</h3>
+                </div>
             </div>
+            
             <div class="detalle-info">
-                ${p.strVenue ? `<p>📍 ${p.strVenue}</p>` : ''}
-                <p>📅 ${p.dateEvent}</p>
+                ${p.strVenue ? `<p>📍 <strong>Estadio:</strong> ${p.strVenue}</p>` : ''}
+                ${p.strCountry ? `<p>🌍 <strong>País:</strong> ${p.strCountry}</p>` : ''}
+                ${p.strSeason ? `<p>📅 <strong>Temporada:</strong> ${p.strSeason}</p>` : ''}
+                ${p.strStatus ? `<p>⚽ <strong>Estado:</strong> ${p.strStatus === 'FT' ? 'Finalizado' : p.strStatus}</p>` : ''}
             </div>
-            ${accionHTML}
+            
+            ${accionPrediccionHTML}
+            
             <div id="prediccion-resultado"></div>
+            
+            ${videoHTML}
         </div>
     `;
 }
 
+// ===================================
+// 🔮 VER PREDICCIÓN (PARTIDOS FUTUROS)
+// ===================================
 async function verPrediccionIA(eventoId) {
     const contenedor = document.getElementById('prediccion-resultado');
-    contenedor.innerHTML = '<div class="prediccion-loader"><span class="loader"></span><p> Analizando...</p></div>';
-
+    const boton = document.querySelector('.btn-prediccion-ia');
+    
+    if (!contenedor) return;
+    
+    if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = ' Analizando...';
+    }
+    
+    contenedor.innerHTML = `
+        <div class="prediccion-loader">
+            <span class="loader"></span>
+            <p>🦉 El Profeta está analizando el partido...</p>
+            <p class="mini">Consultando datos históricos y forma reciente</p>
+        </div>
+    `;
+    
     try {
-        const response = await fetch(`/api/profeta/predecir/${eventoId}`, { credentials: 'include' });
+        const response = await fetch(`/api/profeta/predecir/${eventoId}`, {
+            credentials: 'include'
+        });
+        
         const data = await response.json();
-
+        
         if (data.requiere_login) {
-            contenedor.innerHTML = '<div class="prediccion-error"><h3>🔒 Inicia sesión</h3><button onclick="window.location.href=\'login.html\'">Iniciar sesión</button></div>';
+            contenedor.innerHTML = `
+                <div class="prediccion-error">
+                    <h3>🔒 Debes iniciar sesión</h3>
+                    <p>Para ver predicciones IA necesitas estar registrado</p>
+                    <button onclick="window.location.href='login.html'" class="btn-otra">Iniciar sesión</button>
+                </div>
+            `;
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = ' Ver Predicción con IA';
+            }
             return;
         }
-
+        
         if (data.requiere_vip) {
             contenedor.innerHTML = `
                 <div class="prediccion-vip">
-                    <h3>🔒 Límite alcanzado</h3>
-                    <p>${data.mensaje}</p>
-                    <p class="vip-nota">📱 <a href="https://wa.me/573171547065" target="_blank">WhatsApp: +57 317 154 7065</a></p>
+                    <div class="vip-icono">💎</div>
+                    <h3> Límite diario alcanzado</h3>
+                    <p class="vip-mensaje">${data.mensaje}</p>
+                    
+                    <div class="vip-beneficios">
+                        <h4>✨ Beneficios VIP:</h4>
+                        <ul>
+                            <li>🔮 Predicciones ILIMITADAS por 30 días</li>
+                            <li>⚽ Todos los partidos de las 10 ligas</li>
+                            <li> Análisis detallado con IA</li>
+                            <li>🎯 Acceso prioritario a nuevas funciones</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="vip-precio">
+                        <h4>💰 Donación voluntaria</h4>
+                        <p class="precio-monto">${data.precio}</p>
+                        <p class="precio-metodo">${data.metodo}</p>
+                    </div>
+                    
+                    <div class="vip-acciones">
+                        <button onclick="contactarWhatsAppVIP()" class="btn-vip-donar">
+                            💛 Contactar y Donar
+                        </button>
+                        <button onclick="mostrarActivarVIP()" class="btn-vip-codigo">
+                            🎟️ Ya tengo código VIP
+                        </button>
+                    </div>
+                    
+                    <p class="vip-nota">
+                        📱 <strong>WhatsApp directo:</strong> 
+                        <a href="https://wa.me/573171547065?text=${encodeURIComponent('Hola Profeta! 🦉 Vengo de Didasko AI y quiero mi código VIP. Ya donaré ')}" target="_blank">+57 317 154 7065</a>
+                    </p>
                 </div>
             `;
+            if (boton) {
+                boton.style.display = 'none';
+            }
             return;
         }
-
+        
         if (!data.success) {
-            contenedor.innerHTML = `<div class="prediccion-error"> ${data.error}</div>`;
+            contenedor.innerHTML = `
+                <div class="prediccion-error">
+                    ❌ ${data.error || 'Error generando predicción'}
+                </div>
+            `;
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = '🔮 Ver Predicción con IA';
+            }
             return;
         }
-
+        
+        const badgeVIP = data.es_vip ? '<span class="badge-vip">💎 VIP</span>' : '';
+        const badgeCache = data.desde_cache ? '<span class="badge-cache"> Cache</span>' : '<span class="badge-nueva">🆕 Nueva</span>';
+        
         contenedor.innerHTML = `
             <div class="prediccion-exitosa">
-                <h3>🔮 Predicción</h3>
-                <div class="prediccion-texto">${formatearPrediccion(data.prediccion)}</div>
-                <p class="prediccion-ia">🤖 IA: ${data.ia_usada}</p>
+                <div class="prediccion-header">
+                    <h3> Predicción del Profeta</h3>
+                    <div class="prediccion-badges">
+                        ${badgeVIP}
+                        ${badgeCache}
+                    </div>
+                </div>
+                
+                <div class="prediccion-texto">
+                    ${formatearPrediccion(data.prediccion)}
+                </div>
+                
+                <div class="prediccion-footer">
+                    <p class="prediccion-ia">🤖 Generado con <strong>${data.ia_usada.toUpperCase()}</strong></p>
+                    <p class="prediccion-disclaimer">⚠️ Predicción con IA para entretenimiento. No es garantía.</p>
+                </div>
             </div>
         `;
+        
+        if (boton) {
+            boton.style.display = 'none';
+        }
+        
     } catch (error) {
-        contenedor.innerHTML = `<div class="prediccion-error">❌ Error: ${error.message}</div>`;
+        contenedor.innerHTML = `
+            <div class="prediccion-error">
+                ❌ Error de conexión: ${error.message}
+            </div>
+        `;
+        if (boton) {
+            boton.disabled = false;
+            boton.innerHTML = '🔮 Ver Predicción con IA';
+        }
     }
 }
 
+// ===================================
+// 🔍 VER PREDICCIÓN PASADA (PARTIDOS FINALIZADOS - V3.5)
+// ===================================
 async function verPrediccionPasada(eventoId) {
     const contenedor = document.getElementById('prediccion-resultado');
-    contenedor.innerHTML = '<div class="prediccion-loader"><span class="loader"></span><p> Cargando...</p></div>';
-
+    const boton = document.querySelector('.btn-prediccion-pasada');
+    
+    if (!contenedor) return;
+    
+    if (boton) {
+        boton.disabled = true;
+        boton.innerHTML = ' Cargando...';
+    }
+    
+    contenedor.innerHTML = `
+        <div class="prediccion-loader">
+            <span class="loader"></span>
+            <p> El Profeta está analizando el partido...</p>
+            <p class="mini">Generando predicción basada en datos previos al partido</p>
+        </div>
+    `;
+    
     try {
-        const response = await fetch(`/api/profeta/predecir/${eventoId}`, { credentials: 'include' });
+        const response = await fetch(`/api/profeta/predecir/${eventoId}`, {
+            credentials: 'include'
+        });
+        
         const data = await response.json();
-
-        if (data.success && data.prediccion) {
+        
+        if (data.requiere_login) {
             contenedor.innerHTML = `
-                <div class="prediccion-exitosa">
-                    <h3>🔍 Predicción pasada</h3>
-                    <div class="prediccion-texto">${formatearPrediccion(data.prediccion)}</div>
+                <div class="prediccion-error">
+                    <h3> Debes iniciar sesión</h3>
+                    <p>Para ver predicciones necesitas estar registrado</p>
+                    <button onclick="window.location.href='login.html'" class="btn-otra">Iniciar sesión</button>
                 </div>
             `;
-        } else {
-            contenedor.innerHTML = '<div class="prediccion-error">❌ No hay predicción</div>';
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = '🔍 Ver qué predijo el Profeta';
+            }
+            return;
         }
+        
+        if (!data.success) {
+            contenedor.innerHTML = `
+                <div class="prediccion-error">
+                    ❌ ${data.error || 'Error cargando predicción'}
+                </div>
+            `;
+            if (boton) {
+                boton.disabled = false;
+                boton.innerHTML = '🔍 Ver qué predijo el Profeta';
+            }
+            return;
+        }
+        
+        const badgeVIP = data.es_vip ? '<span class="badge-vip">💎 VIP</span>' : '';
+        const badgeRetro = data.prediccion_retroactiva ? '<span class="badge-retro">🔄 Retroactiva</span>' : '<span class="badge-cache">💾 Cache</span>';
+        
+        // 🆕 Mostrar resultado real si existe
+        let resultadoRealHTML = '';
+        if (data.resultado_real) {
+            const r = data.resultado_real;
+            resultadoRealHTML = `
+                <div class="resultado-real-box">
+                    <h4>⚽ Resultado Real del Partido</h4>
+                    <div class="resultado-marcador-real">
+                        <span>${r.local} <strong>${r.goles_local}</strong></span>
+                        <span class="vs">-</span>
+                        <span><strong>${r.goles_visitante}</strong> ${r.visitante}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        contenedor.innerHTML = `
+            <div class="prediccion-exitosa prediccion-pasada">
+                <div class="prediccion-header">
+                    <h3>🔍 Lo que predijo el Profeta</h3>
+                    <div class="prediccion-badges">
+                        ${badgeVIP}
+                        ${badgeRetro}
+                    </div>
+                </div>
+                
+                ${resultadoRealHTML}
+                
+                <div class="prediccion-texto">
+                    ${formatearPrediccion(data.prediccion)}
+                </div>
+                
+                <div class="prediccion-footer">
+                    <p class="prediccion-ia">🤖 Generado con <strong>${data.ia_usada.toUpperCase()}</strong></p>
+                    <p class="prediccion-disclaimer">⚠️ Esta predicción se generó con base en los datos disponibles antes del partido.</p>
+                </div>
+            </div>
+        `;
+        
+        if (boton) {
+            boton.style.display = 'none';
+        }
+        
     } catch (error) {
-        contenedor.innerHTML = `<div class="prediccion-error">❌ Error: ${error.message}</div>`;
+        contenedor.innerHTML = `
+            <div class="prediccion-error">
+                ❌ Error de conexión: ${error.message}
+            </div>
+        `;
+        if (boton) {
+            boton.disabled = false;
+            boton.innerHTML = ' Ver qué predijo el Profeta';
+        }
     }
 }
 
+// ===================================
+//  Formatear texto de predicción
+// ===================================
 function formatearPrediccion(texto) {
     if (!texto) return '';
-    return texto
+    let html = texto
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n\n/g, '</p><p>')
         .replace(/\n/g, '<br>');
+    return `<p>${html}</p>`;
 }
 
+// ===================================
+// 🎟️ Modal activar código VIP
+// ===================================
+function mostrarActivarVIP() {
+    const codigo = prompt('️ Ingresa tu código VIP:\n\n(Ejemplo: DIDASKO-ABC123)');
+    if (!codigo || !codigo.trim()) return;
+    activarCodigoVIP(codigo.trim().toUpperCase());
+}
+
+async function activarCodigoVIP(codigo) {
+    try {
+        const response = await fetch('/api/profeta/vip/activar', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codigo })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`🎉 ${data.mensaje}\n\nVIP activo hasta: ${new Date(data.vip_hasta).toLocaleDateString('es-CO')}`);
+            location.reload();
+        } else {
+            alert(`❌ ${data.error}`);
+        }
+    } catch (error) {
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+// ===================================
+// 🔙 Volver al Profeta principal
+// ===================================
 function volverAProfeta() {
     profetaCargado = false;
+    ligaSeleccionada = null;
     mostrarPartidosHoy();
     profetaCargado = true;
 }
 
-console.log('✅ profeta.js V4.1 cargado');
+// ===================================
+// 📱 Contactar WhatsApp para VIP
+// ===================================
+function contactarWhatsAppVIP() {
+    const mensaje = encodeURIComponent(
+        'Hola Profeta!  Vengo de Didasko AI y quiero mi código VIP. Ya donaré ⚽'
+    );
+    const numero = '573171547065';
+    const url = `https://wa.me/${numero}?text=${mensaje}`;
+    window.open(url, '_blank');
+}
+
+if (typeof CONFIG !== 'undefined' && CONFIG.DEBUG) console.log('🌐 profeta.js V3.5 cargado con Predicciones Retroactivas');
